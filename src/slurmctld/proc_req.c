@@ -1942,6 +1942,7 @@ static void _slurm_rpc_epilog_complete(slurm_msg_t *msg)
 	bool run_scheduler = false;
 
 	START_TIMER;
+	debug2("Processing RPC: MESSAGE_EPILOG_COMPLETE uid=%d JobId=%d", uid, epilog_msg->job_id);
 	if (!validate_slurm_user(msg->auth_uid)) {
 		error("Security violation, EPILOG_COMPLETE RPC from uid=%u",
 		      msg->auth_uid);
