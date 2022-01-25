@@ -20,17 +20,63 @@
 
 #include "sim_time.h"
 
+//should be in shared memory
+extern int64_t *sim_timeval_shift;
+extern double *sim_timeval_scale;
+
+int64_t process_create_time_real = 0;
+int64_t process_create_time_sim = 0;
+
+#define real_gettimeofday gettimeofday
 
 /* return real time in microseconds */
 int64_t get_real_utime()
 {
 	struct timeval cur_real_time;
-    //real_gettimeofday(&cur_real_time, NULL);
-	gettimeofday(&cur_real_time, NULL);
+    real_gettimeofday(&cur_real_time, NULL);
 
 	int64_t cur_real_utime = (int64_t) (cur_real_time.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_time.tv_usec);
 	return cur_real_utime;
 }
+
+/* return simulated time in microseconds */
+int64_t get_sim_utime()
+{
+	return get_real_utime();
+	/*int64_t cur_real_utime = get_real_utime();
+	int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
+	return cur_sim_time;*/
+}
+
+void set_sim_time_and_scale(int64_t cur_sim_time, double scale)
+{
+	struct timeval cur_real_time;
+	real_gettimeofday(&cur_real_time, NULL);
+
+	int64_t cur_real_utime = (int64_t) (cur_real_time.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_time.tv_usec);
+
+	*sim_timeval_scale = scale;
+	// essentially cur_sim_time - (*sim_timeval_scale)*cur_real_utime
+	// reformatted to avoid overflow
+	*sim_timeval_shift = (int64_t)((1.0-*sim_timeval_scale)*cur_sim_time) -
+			(int64_t)(*sim_timeval_scale * (cur_real_utime - cur_sim_time));
+
+	debug2("sim_timeval_shift %ld sim_timeval_scale %f\n\n", *sim_timeval_shift, *sim_timeval_scale);
+}
+
+void set_sim_time_scale(double scale)
+{
+	if (scale != *sim_timeval_scale) {
+		set_sim_time_and_scale(get_sim_utime(), scale);
+	}
+}
+
+void set_sim_time(int64_t cur_sim_time)
+{
+	set_sim_time_and_scale(cur_sim_time, *sim_timeval_scale);
+}
+
+
 
 /* find index of n-th space */
 int find_nth_space(char *search_buffer, int space_ordinality) {
@@ -138,5 +184,36 @@ int64_t get_process_create_time() {
 
 	xfree(stat_buf);
 	return process_start_time_since_epoch;
+}
+
+/* initialize simulation time */
+void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time_to_real)
+{
+	int64_t cur_sim_time;
+	int64_t cur_real_time;
+
+	//determine_libc();
+	//set_pointers_to_time_func();
+
+	if (set_time_to_real > 0 || start_time==0) {
+		cur_sim_time = get_real_utime();
+	} else {
+		cur_sim_time = (int64_t) start_time * (int64_t) 1000000;
+	}
+
+	if (set_time > 0) {
+		set_sim_time_and_scale(cur_sim_time, scale);
+	}
+
+	cur_sim_time = get_sim_utime();
+	cur_real_time = get_real_utime();
+
+	process_create_time_real = get_process_create_time();
+	process_create_time_sim = process_create_time_real + (cur_sim_time - cur_real_time);
+
+	info("sim: process create utime: %" PRId64 " process create utime: %" PRId64,
+			process_create_time_real, process_create_time_sim);
+	info("sim: current real utime: %" PRId64 ", current sim utime: %" PRId64,
+			cur_real_time, cur_sim_time);
 }
 
