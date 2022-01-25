@@ -12,10 +12,8 @@ AM_CPPFLAGS = -I$(top_srcdir)
 slurmctld_SOURCES =     \
 	acct_policy.c	\
 	acct_policy.h	\
-	agent.c  	\
 	agent.h		\
 	backup.c	\
-	controller.c 	\
 	crontab.c 	\
 	fed_mgr.c 	\
 	fed_mgr.h 	\
@@ -72,6 +70,15 @@ slurmctld_SOURCES =     \
 	step_mgr.c	\
 	trigger_mgr.c	\
 	trigger_mgr.h
+
+if ENABLE_SIMULATOR
+slurmctld_SOURCES +=	\
+    ../../contribs/sim/sim_time.c	\
+	../../contribs/sim/slurmctld_controller.c	\
+	agent.c
+else
+slurmctld_SOURCES += controller.c agent.c
+endif
 
 
 sbin_PROGRAMS = slurmctld
