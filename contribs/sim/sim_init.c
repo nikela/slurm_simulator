@@ -12,6 +12,8 @@
 
 #include "../../contribs/sim/sim_time.h"
 #include "../../contribs/sim/sim_conf.h"
+#include "../../contribs/sim/sim_events.h"
+#include "../../contribs/sim/sim_jobs.h"
 #include "../../contribs/sim/sim.h"
 
 /* Shared Memory */
@@ -133,8 +135,8 @@ void __attribute__ ((constructor)) sim_init(void)
 	sim_timeval_scale = &m_sim_timeval_scale;
 
 
-	sim_read_sim_conf();
-	sim_print_sim_conf();
+	read_sim_conf();
+	print_sim_conf();
 
 	//sim_read_users();
 	//sim_print_users();

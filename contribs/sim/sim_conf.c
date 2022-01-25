@@ -24,7 +24,7 @@
 
 slurm_sim_conf_t *slurm_sim_conf = NULL;
 
-extern int sim_read_sim_conf(void) {
+int read_sim_conf(void) {
 	s_p_options_t options[] = {
 			{"TimeStart", S_P_UINT32 },
 			{"TimeStop", S_P_UINT32 },
@@ -116,7 +116,7 @@ extern int sim_read_sim_conf(void) {
 	return SLURM_SUCCESS;
 }
 
-extern int sim_print_sim_conf(void) {
+int print_sim_conf(void) {
 	info("Sim: Slurm simulator configuration:");
 	info("TimeStart=%u", slurm_sim_conf->time_start);
 	info("TimeStop=%u", slurm_sim_conf->time_stop);
