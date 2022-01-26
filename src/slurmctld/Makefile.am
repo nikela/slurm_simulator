@@ -78,6 +78,7 @@ slurmctld_SOURCES +=	\
     ../../contribs/sim/sim_conf.c	\
     ../../contribs/sim/sim_events.c	\
     ../../contribs/sim/sim_jobs.c	\
+    ../../contribs/sim/sim_sbatch.c	 ../sbatch/opt.c opt.h ../sbatch/xlate.c \
 	../../contribs/sim/slurmctld_controller.c	\
 	agent.c
 else

@@ -77,7 +77,7 @@ extern void sim_print_event(sim_event_t * event)
 			xstrcat(str, " ");
 		}
 		info("%" PRId64 "\tSIM_SUBMIT_BATCH_JOB --jid %d --sim-walltime %d %s",
-				event->when, payload->job_id, payload->walltime, str);
+				event->when, payload->job_id, payload->wall_utime, str);
 		str[0]='\0';
 		break;
 	default:
@@ -182,15 +182,20 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 	int iarg, argc;
 	char **argv;
 	char *s_job_id = NULL;
+	char *username=NULL;
+	char *sleep_time_str=NULL;
 	int job_name_set = 0;
+	int workdir_set = 0;
+	int sleep_set = 0;
+	int pseudo_job_set = 0;
 	//char job_name_str[64];
 
 	split_cmd_line(event_details,&argv,&argc);
 
-	payload->argv = xcalloc(argc + 5, sizeof(char*));
+	payload->argv = xcalloc(argc + 10, sizeof(char*));
 	payload->argv[0] = xstrdup("sbatch");
 	payload->argc = 1;
-	payload->walltime = -1;
+	payload->wall_utime = -1;
 
 	//scan for values:
 	for(iarg=0;iarg<argc;++iarg){
@@ -198,12 +203,41 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 			++iarg;
 			payload->job_id = atoi(argv[iarg]);
 			s_job_id = argv[iarg];
-		} else if((xstrcmp(argv[iarg], "-J")==0 || xstrcmp(argv[iarg], "--job-name")==0) && iarg+1<argc){
+		} else if(xstrcmp(argv[iarg], "-J")==0 && iarg+1<argc){
 			++iarg;
 			job_name_set = 1;
+		} else if(xstrncmp(argv[iarg], "--job-name=", 11)==0){
+			job_name_set = 1;
+		} else if(xstrcmp(argv[iarg], "-D")==0 && iarg+1<argc){
+			// -D, --chdir=directory       set working directory for batch script\n"
+			++iarg;
+			workdir_set = 1;
+		} else if(xstrncmp(argv[iarg], "--chdir=", 8)==0){
+			// -D, --chdir=directory       set working directory for batch script\n"
+			++iarg;
+			workdir_set = 1;
+		} else if(xstrncmp(argv[iarg], "--uid=", 6)==0 && iarg+1<argc){
+			// --uid=user_id           user ID to run job as (user root only)\n"
+			info("argv[iarg] %s", argv[iarg]);
+			info("argv[iarg] %s", xstrchr(argv[iarg],'='));
+			username = xstrchr(argv[iarg],'=')+1;
+			info("username %s", username);
 		} else if(xstrcmp(argv[iarg], "-sim-walltime")==0 && iarg+1<argc){
 			++iarg;
-			payload->walltime = atoi(argv[iarg]);
+			sleep_time_str = argv[iarg];
+			payload->wall_utime = (int64_t)atof(argv[iarg])*1000000;
+
+		} else if(xstrcmp(argv[iarg], "pseudo.job")==0){
+			pseudo_job_set = 1;
+
+		} else if(xstrcmp(argv[iarg], "-sleep")==0 && iarg+1<argc){
+			++iarg;
+			if(pseudo_job_set==0) {
+				error("-sleep should be after pseudo.job");
+			}
+			sleep_set = 1;
+			sleep_time_str = argv[iarg];
+			payload->wall_utime = (int64_t)atof(argv[iarg])*1000000;
 		}
 	}
 
@@ -215,6 +249,15 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 		payload->argv[payload->argc] = xstrdup_printf("jobid_%s", s_job_id);
 		payload->argc += 1;
 	}
+	/* set workdir */
+	if(workdir_set == 0) {
+		if(username != NULL) {
+			payload->argv[payload->argc] = xstrdup_printf("--chdir=/home/%s", username);
+		} else {
+			payload->argv[payload->argc] = xstrdup_printf("--chdir=/tmp");
+		}
+		payload->argc += 1;
+	}
 
 	/* set rest of arguments */
 	for(iarg=0;iarg<argc;++iarg){
@@ -222,15 +265,29 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 			++iarg;
 		} else if(xstrcmp(argv[iarg], "-sim-walltime")==0 && iarg+1<argc){
 			++iarg;
+		} else if(xstrcmp(argv[iarg], "pseudo.job")==0){
+			payload->argv[payload->argc] = xstrdup("/opt/cluster/microapps/pseudo.job");
+			payload->argc += 1;
+
 		} else {
 			payload->argv[payload->argc] = xstrdup(argv[iarg]);
 			payload->argc += 1;
 		}
 	}
+	if(sleep_set==0) {
+		payload->argv[payload->argc] = xstrdup("-sleep");
+		payload->argc += 1;
+		if(sleep_time_str!=NULL) {
+			payload->argv[payload->argc] = xstrdup(sleep_time_str);
+		} else {
+			payload->argv[payload->argc] = xstrdup("-1");
+		}
+		payload->argc += 1;
+	}
 
-	if(payload->walltime < 0) {
-		// i.e. run till walltime limit
-		payload->walltime = INT32_MAX;
+	if(payload->wall_utime < 0) {
+		// i.e. run till wall_utime limit
+		payload->wall_utime = INT32_MAX;
 	}
 
 	xfree(argv[0]);

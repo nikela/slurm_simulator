@@ -90,7 +90,7 @@ extern void sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit
 {
 	sim_job_t *active_job=xcalloc(1,sizeof(*active_job));
 	active_job->job_id = event_submit_batch_job->job_id;
-	active_job->walltime = event_submit_batch_job->walltime;
+	active_job->walltime = event_submit_batch_job->wall_utime;
 	active_job->submit_time = get_sim_utime();
 
 	sim_insert_active_job(active_job);

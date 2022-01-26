@@ -16,6 +16,9 @@
 #include <inttypes.h>
 
 pthread_t thread_id_event_thread;
+
+extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job);
+
 /*
  * read and remove simulation related arguments
  */
@@ -170,8 +173,8 @@ void *sim_events_thread(void *no_data)
 					//sim_registration_engine();
 					break;
 				case SIM_SUBMIT_BATCH_JOB:
-					info("sim:SIM_SUBMIT_BATCH_JOB");
-					//submit_job((sim_event_submit_batch_job_t*)event->payload);
+					info("sim:SIM_SUBMIT_BATCH_JOB SIM_SUBMIT_BATCH_JOB SIM_SUBMIT_BATCH_JOB SIM_SUBMIT_BATCH_JOB SIM_SUBMIT_BATCH_JOB");
+					submit_job((sim_event_submit_batch_job_t*)event->payload);
 					break;
 				case SIM_COMPLETE_BATCH_SCRIPT:
 					//sim_complete_job(((sim_job_t*)event->payload)->job_id);
