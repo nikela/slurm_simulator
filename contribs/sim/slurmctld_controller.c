@@ -14,6 +14,7 @@
 #include "../../contribs/sim/sim.h"
 
 #include <inttypes.h>
+#include <signal.h>
 
 pthread_t thread_id_event_thread;
 
@@ -125,7 +126,7 @@ void *sim_events_thread(void *no_data)
 	//time_t start_time;
 	//int jobs_submit_count=0;
 	static sim_event_t * event = NULL;
-	//static time_t all_done=0;
+	static time_t all_done=0;
 	char *stmp1 = xcalloc(128, sizeof(char));
 	char *stmp2 = xcalloc(128, sizeof(char));
 
@@ -173,7 +174,6 @@ void *sim_events_thread(void *no_data)
 					//sim_registration_engine();
 					break;
 				case SIM_SUBMIT_BATCH_JOB:
-					info("sim:SIM_SUBMIT_BATCH_JOB SIM_SUBMIT_BATCH_JOB SIM_SUBMIT_BATCH_JOB SIM_SUBMIT_BATCH_JOB SIM_SUBMIT_BATCH_JOB");
 					submit_job((sim_event_submit_batch_job_t*)event->payload);
 					break;
 				case SIM_COMPLETE_BATCH_SCRIPT:
@@ -208,19 +208,20 @@ void *sim_events_thread(void *no_data)
 
 
 		/*exit if everything is done*/
-		/*if(sim_next_event==sim_last_event &&
+		if(sim_next_event==sim_last_event &&
 				sim_first_active_job==NULL &&
+				slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0 &&
 				slurm_sim_conf->time_after_all_events_done >=0) {
 			if(all_done==0) {
-				debug2("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
+				info("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
 				all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done;
 			}
 			now = get_sim_utime();
 			if(all_done - now < 0) {
-				debug2("All done.");
-				exit(0);
+				info("All done.");
+				raise(SIGINT);
 			}
-		}*/
+		}
 		/* SIM End */
 	}
 	xfree(stmp1);
@@ -261,6 +262,10 @@ main (int argc, char **argv)
 
 	create_sim_events_handler();
 
+	int64_t sim_slurmctld_main_start_time2 = get_real_utime();
+	simulator_start_time += (sim_slurmctld_main_start_time2 - sim_constructor_start_time);
+	info("sim_slurmctld_main_start_time2: %" PRId64, sim_slurmctld_main_start_time2);
+	info("simulator_start_time(corrected): %" PRId64, simulator_start_time);
 	slurmctld_main(slurmctld_argc, slurmctld_argv);
 
 	debug("%d", controller_sigarray[0]);

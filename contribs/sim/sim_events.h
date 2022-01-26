@@ -30,6 +30,8 @@ typedef struct sim_event {
 } sim_event_t;
 
 extern sim_event_t * sim_next_event;
+extern sim_event_t * sim_first_event;
+extern sim_event_t * sim_last_event;
 
 extern void sim_init_events();
 extern void sim_print_events();

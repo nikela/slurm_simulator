@@ -110,15 +110,13 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 {
 	/*
 	 * got main function from sbatch and replaced all exit with return
+	 *
+	 * DONFORGET to add sim_insert_sim_active_job and walltime retirements
 	 */
 	int argc=event_submit_batch_job->argc;
 	char **argv=event_submit_batch_job->argv;
 
-	for(int i=0;i<argc;++i){
-		printf("%d %s\n",i,argv[i]);
-	}
-
-	log_options_t logopt = LOG_OPTS_STDERR_ONLY;
+	//log_options_t logopt = LOG_OPTS_STDERR_ONLY;
 	job_desc_msg_t *desc = NULL, *first_desc = NULL;
 	submit_response_msg_t *resp = NULL;
 	char *script_name;

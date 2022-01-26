@@ -22,6 +22,9 @@ typedef struct sim_job {
 
 extern pthread_mutex_t active_job_mutex;
 
+extern sim_job_t * sim_first_active_job;
+extern sim_job_t * sim_last_active_job;
+
 extern void sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit_batch_job);
 extern int sim_remove_active_sim_job(uint32_t job_id);
 extern sim_job_t *sim_find_active_sim_job(uint32_t job_id);
