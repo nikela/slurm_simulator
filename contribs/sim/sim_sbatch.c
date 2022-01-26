@@ -240,8 +240,6 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 		local_env = xmalloc(sizeof(sbatch_env_t));
 		memcpy(local_env, &het_job_env, sizeof(sbatch_env_t));
 
-		info("opt.chdir %s", opt.chdir);
-
 		desc = slurm_opt_create_job_desc(&opt, true);
 		if (_fill_job_desc_from_opts(desc) == -1)
 			exit(error_exit);

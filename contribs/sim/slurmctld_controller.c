@@ -132,6 +132,7 @@ void *sim_events_thread(void *no_data)
 
 	int64_t now;
 	int64_t cur_real_utime, cur_sim_utime;
+	int64_t slurmctld_diag_stats_lastcheck;
 
 	/* time reference */
 	sleep(1);
@@ -206,21 +207,29 @@ void *sim_events_thread(void *no_data)
 		}*/
 
 
-
 		/*exit if everything is done*/
+
 		if(sim_next_event==sim_last_event &&
 				sim_first_active_job==NULL &&
 				slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0 &&
 				slurm_sim_conf->time_after_all_events_done >=0) {
-			if(all_done==0) {
-				info("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
-				all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done;
+			/* no more jobs to submit */
+			_update_diag_job_state_counts();
+			if(slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0){
+				if(all_done==0) {
+					info("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
+					all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done;
+				}
+				now = get_sim_utime();
+				if(all_done - now < 0) {
+					info("All done.");
+					raise(SIGINT);
+				}
+			} else {
+				all_done=0;
 			}
-			now = get_sim_utime();
-			if(all_done - now < 0) {
-				info("All done.");
-				raise(SIGINT);
-			}
+
+
 		}
 		/* SIM End */
 	}
