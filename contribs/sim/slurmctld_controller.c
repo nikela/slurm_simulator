@@ -39,6 +39,14 @@ static void sim_slurmctld_parse_commandline(int *new_argc, char ***new_argv, int
 			slurm_sim_conf->events_file = xstrdup(argv[i+1]);
 			info("will read events file from %s", slurm_sim_conf->events_file);
 			++i;
+		} else if(xstrcmp(argv[i],"-dtstart")==0) {
+			if(argc-1<=i) {
+				error("dtstart is not specified in command line!");
+				exit(1);
+			}
+			slurm_sim_conf->microseconds_before_first_job=(int64_t)(atof(argv[i+1])*1000000);
+			info("microseconds_before_first_job (dtstart) reset to %" PRId64 " usec", slurm_sim_conf->microseconds_before_first_job);
+			++i;
 		} else {
 			m_argv[m_argc] = xstrdup(argv[i]);
 			m_argc += 1;
@@ -272,7 +280,7 @@ main (int argc, char **argv)
 	create_sim_events_handler();
 
 	int64_t sim_slurmctld_main_start_time2 = get_real_utime();
-	simulator_start_time += (sim_slurmctld_main_start_time2 - sim_constructor_start_time);
+	//simulator_start_time += (sim_slurmctld_main_start_time2 - sim_constructor_start_time);
 	info("sim_slurmctld_main_start_time2: %" PRId64, sim_slurmctld_main_start_time2);
 	info("simulator_start_time(corrected): %" PRId64, simulator_start_time);
 	slurmctld_main(slurmctld_argc, slurmctld_argv);

@@ -218,10 +218,7 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 			workdir_set = 1;
 		} else if(xstrncmp(argv[iarg], "--uid=", 6)==0 && iarg+1<argc){
 			// --uid=user_id           user ID to run job as (user root only)\n"
-			info("argv[iarg] %s", argv[iarg]);
-			info("argv[iarg] %s", xstrchr(argv[iarg],'='));
 			username = xstrchr(argv[iarg],'=')+1;
-			info("username %s", username);
 		} else if(xstrcmp(argv[iarg], "-sim-walltime")==0 && iarg+1<argc){
 			++iarg;
 			sleep_time_str = argv[iarg];

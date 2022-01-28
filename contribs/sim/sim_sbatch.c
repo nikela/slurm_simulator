@@ -317,6 +317,9 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 		return;
 	}
 
+	//Do not submit
+	//xfree(script_body);return;
+
 	while (true) {
 		static char *msg;
 		if (job_req_list)
