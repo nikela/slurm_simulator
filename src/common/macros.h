@@ -300,6 +300,7 @@
  * Note that the attr argument is intentionally omitted, as it will
  * be setup within the macro to Slurm's default options.
  */
+#ifndef SLURM_SIMULATOR
 #define slurm_thread_create(id, func, arg)				\
 	do {								\
 		pthread_attr_t attr;					\
@@ -312,13 +313,35 @@
 		}							\
 		slurm_attr_destroy(&attr);				\
 	} while (0)
-
+#else
+extern int sim_pthread_create (pthread_t *newthread,
+		const pthread_attr_t *attr,
+		void *(*start_routine) (void *),
+		void *arg,
+		const char *id,
+		const char *func,
+		const char *filename,
+		const char *note);
+#define slurm_thread_create(id, func, arg)				\
+	do {								\
+		pthread_attr_t attr;					\
+		int err;						\
+		slurm_attr_init(&attr);					\
+		err = sim_pthread_create(id, &attr, func, arg, #id, #func,__FILE__,"");		\
+		if (err) {						\
+			errno = err;					\
+			fatal("%s: pthread_create error %m", __func__);	\
+		}							\
+		slurm_attr_destroy(&attr);				\
+	} while (0)
+#endif
 /*
  * Both the thread and attr arguments are intentionally omitted. There
  * is basically nothing safe you can do with a detached thread's id,
  * so this macro intentionally prevents you from capturing it.
  */
-#define slurm_thread_create_detached(func, arg)				\
+#ifndef SLURM_SIMULATOR
+#define slurm_thread_create_detached(id, func, arg)			\
 	do {								\
 		pthread_t id_local;					\
 		pthread_attr_t attr;					\
@@ -338,7 +361,28 @@
 		}							\
 		slurm_attr_destroy(&attr);				\
 	} while (0)
-
+#else
+#define slurm_thread_create_detached(id, func, arg)			\
+	do {								\
+		pthread_t id_local;					\
+		pthread_attr_t attr;					\
+		int err;						\
+		slurm_attr_init(&attr);					\
+		err = pthread_attr_setdetachstate(&attr,		\
+						  PTHREAD_CREATE_DETACHED); \
+		if (err) {						\
+			errno = err;					\
+			fatal("%s: pthread_attr_setdetachstate %m",	\
+			      __func__);				\
+		}							\
+		err = sim_pthread_create(id_ptr, &attr, func, arg, #id, #func, __FILE__,"detached");	\
+		if (err) {						\
+			errno = err;					\
+			fatal("%s: pthread_create error %m", __func__);	\
+		}							\
+		slurm_attr_destroy(&attr);				\
+	} while (0)
+#endif
 
 #define slurm_atoul(str) strtoul(str, NULL, 10)
 #define slurm_atoull(str) strtoull(str, NULL, 10)

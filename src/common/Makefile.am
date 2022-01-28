@@ -172,6 +172,10 @@ libcommon_la_SOURCES =				\
 	xstring.c				\
 	xstring.h
 
+if ENABLE_SIMULATOR
+libcommon_la_SOURCES += ../../contribs/sim/sim_pthread.c
+endif
+
 libcommon_la_LIBADD   = $(libselinux_LIBS)
 
 libcommon_la_LDFLAGS  = $(LIB_LDFLAGS) -module --export-dynamic
