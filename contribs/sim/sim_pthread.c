@@ -33,13 +33,13 @@ int sim_pthread_create (pthread_t *newthread,
 		return 0;
 	} else if (xstrcmp("&slurmctld_config.thread_id_save", id) == 0) {
 		debug("sim_pthread_create: %s ... start.", id);
-		//return 0;
+		return 0;
 	} else if (xstrcmp("&slurmctld_config.thread_id_power", id) == 0) {
 		debug("sim_pthread_create: %s ... skip.", id);
 		return 0;
 	} else if ((xstrcmp("thread_id", id) == 0) && (xstrcmp("_init_power_save", func) == 0)) {
 		debug("sim_pthread_create: %s %s ... skip.", id,func);
-		//return 0;
+		return 0;
 	} else if (xstrcmp("&slurmctld_config.thread_id_purge_files", id) == 0) {
 		debug("sim_pthread_create: %s ... skip.", id);
 		return 0;
@@ -51,6 +51,11 @@ int sim_pthread_create (pthread_t *newthread,
 	}
 	//debug("id: '%s'", id);
 	//debug("func: '%s'", func);
+
+
+
+
+
 
 	int err = pthread_create(newthread, attr, start_routine, arg);
 
