@@ -18,7 +18,6 @@ SUBDIRS =		\
 	scrun		\
 	sdiag		\
 	sinfo		\
-	slurmctld	\
 	slurmd		\
 	slurmdbd	\
 	slurmrestd	\
@@ -29,4 +28,5 @@ SUBDIRS =		\
 	sshare		\
 	sstat		\
 	strigger	\
-	sview
+	sview		\
+	slurmctld

@@ -19,6 +19,7 @@
 pthread_t thread_id_event_thread;
 
 extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job);
+extern int sim_init_slurmd(int argc, char **argv);
 
 /*
  * read and remove simulation related arguments
@@ -129,6 +130,9 @@ void sim_epilog_complete(uint32_t job_id)
 	sim_remove_active_sim_job(job_id);
 }
 
+extern int sim_registration_engine();
+
+
 void *sim_events_thread(void *no_data)
 {
 	//time_t start_time;
@@ -140,7 +144,7 @@ void *sim_events_thread(void *no_data)
 
 	int64_t now;
 	int64_t cur_real_utime, cur_sim_utime;
-	int64_t slurmctld_diag_stats_lastcheck;
+	//int64_t slurmctld_diag_stats_lastcheck;
 
 	/* time reference */
 	sleep(1);

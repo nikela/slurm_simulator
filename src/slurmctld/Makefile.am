@@ -79,17 +79,39 @@ slurmctld_SOURCES +=	\
     ../../contribs/sim/sim_events.c	\
     ../../contribs/sim/sim_jobs.c	\
     ../../contribs/sim/sim_sbatch.c	 ../sbatch/opt.c opt.h ../sbatch/xlate.c \
+    ../../contribs/sim/sim_slurmd.c	\
+	../../contribs/sim/sim_slurmd_req.c	\
+	../../contribs/sim/sim_slurmd_get_mach_stat.c	\
 	../../contribs/sim/slurmctld_controller.c	\
 	agent.c
 else
 slurmctld_SOURCES += controller.c agent.c
 endif
 
+depend_libs =
+depend_ldadd =
+depend_ldflags =
+
+if ENABLE_SIMULATOR
+        depend_libs += \
+    $(top_builddir)/src/bcast/libfile_bcast.la \
+	$(top_builddir)/src/slurmd/common/libslurmd_common.la
+        depend_ldadd += $(NUMA_LIBS)
+# These 2 depend_* should look the same in ../slurmstepd/Makefile.am
+depend_ldadd += $(HWLOC_LIBS) $(PAM_LIBS) $(UTIL_LIBS)
+depend_ldflags += $(HWLOC_LDFLAGS)
+
+# This is needed to actually link to the libs that it doesn't use.
+depend_ldflags += -Wl,--no-as-needed
+# same function waitpid_timeout defined twice rename one
+        slurmctld_CFLAGS = -Dwaitpid_timeout=slurmctld_waitpid_timeout
+
+endif
 
 sbin_PROGRAMS = slurmctld
 
-slurmctld_LDADD = $(LIB_SLURM) $(SLURMCTLD_INTERFACES)
-slurmctld_LDFLAGS = $(CMD_LDFLAGS)
+slurmctld_LDADD = $(depend_libs) $(LIB_SLURM) $(SLURMCTLD_INTERFACES) $(depend_ldadd)
+slurmctld_LDFLAGS = $(CMD_LDFLAGS) $(depend_ldflags)
 
 slurmctld_DEPENDENCIES = $(LIB_SLURM_BUILD) $(SLURMCTLD_INTERFACES)
 
