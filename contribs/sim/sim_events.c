@@ -184,6 +184,7 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 	char *s_job_id = NULL;
 	char *username=NULL;
 	char *sleep_time_str=NULL;
+	char *job_name;
 	int job_name_set = 0;
 	int workdir_set = 0;
 	int sleep_set = 0;
@@ -203,10 +204,14 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 			++iarg;
 			payload->job_id = atoi(argv[iarg]);
 			s_job_id = argv[iarg];
+			error("Don't set -jid!");
+			exit(1);
 		} else if(xstrcmp(argv[iarg], "-J")==0 && iarg+1<argc){
 			++iarg;
+			job_name = argv[iarg];
 			job_name_set = 1;
 		} else if(xstrncmp(argv[iarg], "--job-name=", 11)==0){
+			job_name = xstrchr(argv[iarg],'=')+1;
 			job_name_set = 1;
 		} else if(xstrcmp(argv[iarg], "-D")==0 && iarg+1<argc){
 			// -D, --chdir=directory       set working directory for batch script\n"
@@ -245,7 +250,18 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 
 		payload->argv[payload->argc] = xstrdup_printf("jobid_%s", s_job_id);
 		payload->argc += 1;
+
+		error("Set job names to jobid_<integer>!");
+		exit(1);
 	}
+	if(xstrncmp(job_name, "jobid_", 6)!=0) {
+		error("Set job names to jobid_<integer>!");
+		exit(1);
+	}
+
+	payload->job_id = 0;
+	payload->job_sim_id = get_job_sim_id(job_name);
+
 	/* set workdir */
 	if(workdir_set == 0) {
 		if(username != NULL) {
@@ -408,7 +424,7 @@ void sim_insert_event_comp_job(uint32_t job_id)
 {
 	sim_job_t *sim_job = sim_find_active_sim_job(job_id);
 	if(sim_job==NULL) {
-		error("Sim: Can not find job %d among active sim jobs!", job_id);
+		error("Sim:sim_insert_event_comp_job: Can not find job %d among active sim jobs!", job_id);
 		return;
 	}
 	int64_t when;
@@ -419,7 +435,7 @@ void sim_insert_event_comp_job(uint32_t job_id)
 	}
 
 	if(sim_job->walltime != INT32_MAX){
-		when = sim_job->start_time + sim_job->walltime * 1000000;
+		when = sim_job->start_time + sim_job->walltime;
 		//when += slurm_sim_conf->comp_job_delay;
 		sim_insert_event(when, SIM_COMPLETE_BATCH_SCRIPT, (void*)sim_job);
 	}
@@ -450,7 +466,7 @@ void sim_insert_event_epilog_complete(uint32_t job_id)
 {
 	sim_job_t *sim_job = sim_find_active_sim_job(job_id);
 	if(sim_job==NULL) {
-		error("Sim: Can not find job %d among active sim jobs!", job_id);
+		error("Sim:sim_insert_event_epilog_complete: Can not find job %d among active sim jobs!", job_id);
 		return;
 	}
 	if(sim_job->comp_job) {

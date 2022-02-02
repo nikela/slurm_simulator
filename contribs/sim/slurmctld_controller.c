@@ -10,6 +10,7 @@
 #include "../../contribs/sim/sim_time.h"
 #include "../../contribs/sim/sim_conf.h"
 #include "../../contribs/sim/sim_events.h"
+#include "../../contribs/sim/sim_users.h"
 #include "../../contribs/sim/sim_jobs.h"
 #include "../../contribs/sim/sim.h"
 
@@ -62,6 +63,21 @@ void sim_complete_job(uint32_t job_id)
 {
 	//char *hostname;
 	job_record_t *job_ptr = find_job_record(job_id);
+
+	slurm_step_id_t step_id = { .job_id = job_ptr->job_id,
+						    .step_id = SLURM_BATCH_SCRIPT,
+						    .step_het_comp = NO_VAL };
+	step_record_t *step_ptr = find_step_record(job_ptr, &step_id);
+	if(step_ptr!=NULL) {
+		step_ptr->exit_code = 0;
+		//jobacctinfo_destroy(step_ptr->jobacct);
+		//step_ptr->jobacct = comp_msg->jobacct;
+		//comp_msg->jobacct = NULL;
+		step_ptr->state |= JOB_COMPLETING;
+		jobacct_storage_g_step_complete(acct_db_conn, step_ptr);
+		delete_step_record(job_ptr, step_ptr);
+	}
+
 	if(job_ptr==NULL){
 		error("Can not find record for %d job!", job_id);
 		sim_remove_active_sim_job(job_id);
@@ -84,6 +100,8 @@ void sim_complete_job(uint32_t job_id)
 	}
 	//hostname = hostlist_shift(job_ptr->nodes);
 	// REQUEST_COMPLETE_BATCH_SCRIPT
+
+
 	/* Locks: Write job, write node, read federation */
 	slurmctld_lock_t job_write_lock1 =
 		{ .job  = WRITE_LOCK,
@@ -97,39 +115,7 @@ void sim_complete_job(uint32_t job_id)
 	sim_insert_event_epilog_complete(job_id);
 }
 
-void sim_epilog_complete(uint32_t job_id)
-{
-	//char *hostname;
-	job_record_t *job_ptr = find_job_record(job_id);
-	if(job_ptr==NULL){
-		error("Can not find record for %d job!", job_id);
-		sim_remove_active_sim_job(job_id);
-		return;
-	}
-
-	if(IS_JOB_COMPLETING(job_ptr)){
-		job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
-		sim_remove_active_sim_job(job_id);
-		return;
-	}
-	if(!IS_JOB_RUNNING(job_ptr)){
-		error("Can not stop %d job, it is not running (%s (%d))!",
-				job_id, job_state_string(job_ptr->job_state), job_ptr->job_state);
-		sim_remove_active_sim_job(job_id);
-		return;
-	}
-
-	// MESSAGE_EPILOG_COMPLETE
-	slurmctld_lock_t job_write_lock2 = {
-			READ_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK };
-	lock_slurmctld(job_write_lock2);
-	job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
-	unlock_slurmctld(job_write_lock2);
-
-	//free(hostname);
-	sim_remove_active_sim_job(job_id);
-}
-
+extern void sim_epilog_complete(uint32_t job_id);
 extern int sim_registration_engine();
 
 
@@ -184,16 +170,16 @@ void *sim_events_thread(void *no_data)
 
 				switch(event->type) {
 				case SIM_NODE_REGISTRATION:
-					//sim_registration_engine();
+					sim_registration_engine();
 					break;
 				case SIM_SUBMIT_BATCH_JOB:
 					submit_job((sim_event_submit_batch_job_t*)event->payload);
 					break;
 				case SIM_COMPLETE_BATCH_SCRIPT:
-					//sim_complete_job(((sim_job_t*)event->payload)->job_id);
+					sim_complete_job(((sim_job_t*)event->payload)->job_id);
 					break;
 				case SIM_EPILOG_COMPLETE:
-					//sim_epilog_complete(((sim_job_t*)event->payload)->job_id);
+					sim_epilog_complete(((sim_job_t*)event->payload)->job_id);
 				default:
 					break;
 				}
@@ -264,6 +250,7 @@ main (int argc, char **argv)
 	daemonize = 0;
 	info("Starting Slurm Simulator");
 
+
 	//sim_init_slurmd(argc, argv);
 
 
@@ -279,6 +266,9 @@ main (int argc, char **argv)
 	sim_slurmctld_parse_commandline(&slurmctld_argc, &slurmctld_argv, argc, argv);
 
 	sim_init_events();
+
+	print_sim_conf();
+	sim_print_users();
 	sim_print_events();
 
 	create_sim_events_handler();

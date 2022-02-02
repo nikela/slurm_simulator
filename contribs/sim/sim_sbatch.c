@@ -26,84 +26,6 @@
 //	return 0;
 //}
 
-extern void submit_job_old(sim_event_submit_batch_job_t* event_submit_batch_job)
-{
-	int sbatch_argc=event_submit_batch_job->argc;
-	char **sbatch_argv=event_submit_batch_job->argv;
-	for(int i=0;i<sbatch_argc;++i){
-		printf("%d %s\n",i,sbatch_argv[i]);
-	}
-
-
-	job_desc_msg_t *desc = NULL;
-
-	if (spank_init_allocator() < 0) {
-		error("Failed to initialize plugin stack");
-		exit(error_exit);
-	}
-
-	/* Be sure to call spank_fini when sbatch exits
-	 */
-	if (atexit((void (*) (void)) spank_fini) < 0)
-		error("Failed to register atexit handler for plugins: %m");
-
-    char *script_name;
-	info("AAAAAAAAAA1");
-	script_name = process_options_first_pass(sbatch_argc, sbatch_argv);
-	info("AAAAAAAAAA2");//return;
-	int script_size = 0, het_job_argc, het_job_argc_off = 0, het_job_inx = 0;
-	char **het_job_argv;
-	bool more_het_comps = false;
-	info("AAAAAAAAAA3");
-	het_job_argc = sbatch_argc - opt.argc;
-	het_job_argv = sbatch_argv;
-	info("AAAAAAAAAA4");
-	char *script_body="#!/bin/bash\nsleep 30\n";
-
-	process_options_second_pass(het_job_argc, het_job_argv,
-						    &het_job_argc_off, het_job_inx,
-						    &more_het_comps, script_name ?
-						    xbasename (script_name) : "stdin",
-						    script_body, script_size);
-	info("AAAAAAAAAA5");
-	sbatch_env_t *local_env = (sbatch_env_t*)xmalloc(sizeof(sbatch_env_t));
-	memcpy(local_env, &het_job_env, sizeof(sbatch_env_t));
-
-
-    desc = slurm_opt_create_job_desc(&opt, true);
-	if (_fill_job_desc_from_opts(desc) == -1) {
-		error("Can not fill _fill_job_desc_from_opts");
-	}
-	desc->script = (char *) script_body;
-	info("AAAAAAAAAA6");
-	if(event_submit_batch_job->job_id >0) {
-		desc->job_id = event_submit_batch_job->job_id;
-	}
-
-
-	//int rc = SLURM_SUCCESS;
-	submit_response_msg_t *resp = NULL;
-	info("AAAAAAAAAA7");
-	slurm_submit_batch_job(desc, &resp);
-	//sbatch_main(sbatch_argc, sbatch_argv);
-	//desc = xmalloc(sizeof(job_desc_msg_t));
-	info("AAAAAAAAAA8");
-	if(resp != NULL) {
-		// insert job to active simulated job list
-		if(event_submit_batch_job->job_id==0) {
-			pthread_mutex_lock(&events_mutex);
-			event_submit_batch_job->job_id = resp->job_id;
-			pthread_mutex_unlock(&events_mutex);
-		}
-		if(event_submit_batch_job->job_id != resp->job_id) {
-			error("Job id in event list (%d) does not match to one returned from sbatch (%d)",
-					event_submit_batch_job->job_id, resp->job_id);
-		}
-		sim_insert_sim_active_job(event_submit_batch_job);
-	} else {
-		error("Job was not submitted!");
-	}
-}
 
 
 extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
@@ -111,7 +33,7 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 	/*
 	 * got main function from sbatch and replaced all exit with return
 	 *
-	 * DONFORGET to add sim_insert_sim_active_job and walltime retirements
+	 * DONFORGET to add sim_insert_sim_active_job and walltime retirements (done)
 	 */
 	int argc=event_submit_batch_job->argc;
 	char **argv=event_submit_batch_job->argv;
@@ -120,7 +42,7 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 	job_desc_msg_t *desc = NULL, *first_desc = NULL;
 	submit_response_msg_t *resp = NULL;
 	char *script_name;
-	char *script_body;
+	char *script_body=xstrdup("#!/bin/bash\nsleep 30\n");
 	char **het_job_argv;
 	int script_size = 0, het_job_argc, het_job_argc_off = 0, het_job_inx;
 	int i, rc = SLURM_SUCCESS, retries = 0, het_job_limit = 0;
@@ -162,11 +84,11 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 //		log_alter(logopt, 0, NULL);
 //	}
 
-	if (sbopt.wrap != NULL) {
-		script_body = _script_wrap(sbopt.wrap);
-	} else {
-		script_body = _get_script_buffer(script_name, &script_size);
-	}
+//	if (sbopt.wrap != NULL) {
+//		script_body = _script_wrap(sbopt.wrap);
+//	} else {
+//		script_body = _get_script_buffer(script_name, &script_size);
+//	}
 	if (script_body == NULL) {
 		error("SBATCH: script_body is NULL");
 		return;
@@ -318,7 +240,7 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 	}
 
 	//Do not submit
-	//xfree(script_body);return;
+	sim_job_t *active_job=sim_insert_sim_active_job(event_submit_batch_job);
 
 	while (true) {
 		static char *msg;
@@ -389,6 +311,24 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 	log_fini();
 #endif /* MEMORY_LEAK_DEBUG */
 	xfree(script_body);
+
+	//
+	if(resp != NULL) {
+		// insert job to active simulated job list
+		if(active_job->job_id==0) {
+			pthread_mutex_lock(&events_mutex);
+			active_job->job_id = resp->job_id;
+			event_submit_batch_job->job_id = resp->job_id;
+			pthread_mutex_unlock(&events_mutex);
+		}
+		if(active_job->job_id != resp->job_id) {
+			error("Job id in event list (%d) does not match to one returned from sbatch (%d)",
+					event_submit_batch_job->job_id, resp->job_id);
+		}
+
+	} else {
+		error("Job was not submitted!");
+	}
 
 	return;
 }

@@ -173,7 +173,12 @@ libcommon_la_SOURCES =				\
 	xstring.h
 
 if ENABLE_SIMULATOR
-libcommon_la_SOURCES += ../../contribs/sim/sim_pthread.c
+libcommon_la_SOURCES += 				\
+	../../contribs/sim/sim_init.c	\
+    ../../contribs/sim/sim_conf.c	\
+    ../../contribs/sim/sim_time.c	\
+	../../contribs/sim/sim_users.c	\
+	../../contribs/sim/sim_pthread.c
 endif
 
 libcommon_la_LIBADD   = $(libselinux_LIBS)

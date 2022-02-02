@@ -73,9 +73,6 @@ slurmctld_SOURCES =     \
 
 if ENABLE_SIMULATOR
 slurmctld_SOURCES +=	\
-    ../../contribs/sim/sim_time.c	\
-    ../../contribs/sim/sim_init.c	\
-    ../../contribs/sim/sim_conf.c	\
     ../../contribs/sim/sim_events.c	\
     ../../contribs/sim/sim_jobs.c	\
     ../../contribs/sim/sim_sbatch.c	 ../sbatch/opt.c opt.h ../sbatch/xlate.c \
@@ -83,7 +80,7 @@ slurmctld_SOURCES +=	\
 	../../contribs/sim/sim_slurmd_req.c	\
 	../../contribs/sim/sim_slurmd_get_mach_stat.c	\
 	../../contribs/sim/slurmctld_controller.c	\
-	agent.c
+	../../contribs/sim/slurmctld_agent.c
 else
 slurmctld_SOURCES += controller.c agent.c
 endif

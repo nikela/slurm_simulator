@@ -4725,11 +4725,12 @@ static slurm_cli_opt_t slurm_opt_tmp = {
 
 static int arg_set_uid(slurm_opt_t *opt, const char *arg)
 {
+#ifndef SLURM_SIMULATOR
 	if (getuid() != 0) {
 		error("--uid only permitted by root user");
 		return SLURM_ERROR;
 	}
-
+#endif
 	if (uid_from_string(arg, &opt->uid) < 0) {
 		error("Invalid --uid specification");
 		return SLURM_ERROR;

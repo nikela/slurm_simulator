@@ -11,6 +11,7 @@ typedef struct sim_job sim_job_t;
 typedef struct sim_job {
 	int walltime; /*job duration, INT32_MAX or any large value would results in job running till time limit*/
 	uint32_t job_id;	/* job ID */
+	uint32_t job_sim_id;	/* job sim ID */
 	int64_t submit_time; /* submit_time in usec*/
 	int64_t start_time; /* start_time in usec*/
 	int comp_job; /*job is complete and epilog is scheduled*/
@@ -25,10 +26,12 @@ extern pthread_mutex_t active_job_mutex;
 extern sim_job_t * sim_first_active_job;
 extern sim_job_t * sim_last_active_job;
 
-extern void sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit_batch_job);
+extern sim_job_t * sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit_batch_job);
 extern int sim_remove_active_sim_job(uint32_t job_id);
 extern sim_job_t *sim_find_active_sim_job(uint32_t job_id);
 extern void sim_print_active_jobs();
+
+extern uint32_t get_job_sim_id(const char *job_name);
 
 #endif
 

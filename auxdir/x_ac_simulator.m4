@@ -32,6 +32,8 @@ AC_DEFUN([X_AC_SIMULATOR], [
     test "$GCC" = yes && CFLAGS="$CFLAGS -DSLURM_SIMULATOR"
     test "$GXX" = yes && CXXFLAGS="$CXXFLAGS -DSLURM_SIMULATOR"
     LIBS="$LIBS -lrt -lm"
+    # wrapping getting user and group funtions (getpwnam_r, getpwuid_r, getgrnam_r and getgrgid_r)
+    LDFLAGS="-Wl,-wrap,getpwnam_r -Wl,-wrap,getpwuid_r -Wl,-wrap,getgrnam_r -Wl,-wrap,getgrgid_r $LDFLAGS"
     AC_DEFINE([SLURM_SIMULATOR],[1],
       [Define SLURM_SIMULATOR if you are building slurm in simulator mode.]
     )

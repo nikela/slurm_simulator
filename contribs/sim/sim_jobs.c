@@ -5,6 +5,8 @@
 
 #include "../../src/common/log.h"
 
+#include "../../src/slurmctld/slurmctld.h"
+
 #include "../../contribs/sim/sim_time.h"
 #include "../../contribs/sim/sim_conf.h"
 #include "../../contribs/sim/sim_events.h"
@@ -81,21 +83,24 @@ extern void sim_print_active_jobs()
 	info("Simulation Active Jobs:");
 	sim_job_t * next_sim_job=sim_first_active_job;
 	while(next_sim_job != NULL) {
-		info("--jid %d --sim-walltime %d", next_sim_job->job_id, next_sim_job->walltime);
+		info("job_sim_id %d --jid %d --sim-walltime %d", next_sim_job->job_sim_id, next_sim_job->job_id, next_sim_job->walltime);
 		next_sim_job = next_sim_job->next_sim_job;
 	}
 }
 
-extern void sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit_batch_job)
+extern sim_job_t * sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 {
 	sim_job_t *active_job=xcalloc(1,sizeof(*active_job));
 	active_job->job_id = event_submit_batch_job->job_id;
+	active_job->job_sim_id = event_submit_batch_job->job_sim_id;
 	active_job->walltime = event_submit_batch_job->wall_utime;
 	active_job->submit_time = get_sim_utime();
 
 	sim_insert_active_job(active_job);
 
 	sim_print_active_jobs();
+
+	return active_job;
 }
 
 extern sim_job_t *sim_find_active_sim_job(uint32_t job_id)
@@ -108,5 +113,32 @@ extern sim_job_t *sim_find_active_sim_job(uint32_t job_id)
 		next_sim_job = next_sim_job->next_sim_job;
 	}
 
+	if(next_sim_job==NULL) {
+		// look by job_sim_id
+		job_record_t *job_ptr = find_job_record(job_id);
+		uint32_t job_sim_id = get_job_sim_id(job_ptr->name);
+
+		next_sim_job=sim_first_active_job;
+		while(next_sim_job != NULL) {
+			if(next_sim_job->job_sim_id == job_sim_id) {
+
+				pthread_mutex_lock(&events_mutex);
+				next_sim_job->job_id = job_id;
+				pthread_mutex_unlock(&events_mutex);
+				return next_sim_job;
+			}
+			next_sim_job = next_sim_job->next_sim_job;
+		}
+
+	}
 	return NULL;
+}
+
+extern uint32_t get_job_sim_id(const char *job_name)
+{
+	if(xstrncmp(job_name, "jobid_", 6)!=0) {
+		error("Set job names to jobid_<integer>!");
+		exit(1);
+	}
+	return atoi(xstrchr(job_name,'_')+1);
 }

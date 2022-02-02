@@ -55,8 +55,11 @@ extern int sim_init_slurmd(int argc, char **argv)
 extern int sim_registration_engine()
 {
 	int argc=1;
-	char **argv=xcalloc(1,sizeof(char *));
+	char **argv=xcalloc(2,sizeof(char *));
 	argv[0]=xstrdup("slurmd");
+	argv[1]=NULL;
+
+	optind=0;
 
 	sim_init_slurmd(argc, argv);
 	DEF_TIMERS;

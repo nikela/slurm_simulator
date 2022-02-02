@@ -14,6 +14,7 @@
 #include "../../contribs/sim/sim_conf.h"
 #include "../../contribs/sim/sim_events.h"
 #include "../../contribs/sim/sim_jobs.h"
+#include "../../contribs/sim/sim_users.h"
 #include "../../contribs/sim/sim.h"
 
 /* Shared Memory */
@@ -117,14 +118,14 @@ extern char *__progname;
 void __attribute__ ((constructor)) sim_init(void)
 {
 	sim_constructor_start_time = get_real_utime();
-	info("Sim: Slurm simulator init (%s).", __progname);
+	//info("Sim: Slurm simulator init (%s).", __progname);
 
 	/*struct timespec ts;
 	timespec_get(&ts, TIME_UTC);*/
-	time_t t = sim_constructor_start_time/1000000;
-	char buff[100];
-	strftime(buff, sizeof buff, "%D %T", gmtime(&t));
-	printf("Current time: %s.%09ld UTC\n", buff, sim_constructor_start_time%1000000);
+	//time_t t = sim_constructor_start_time/1000000;
+	//char buff[100];
+	//strftime(buff, sizeof buff, "%D %T", gmtime(&t));
+	//printf("Current time: %s.%09ld UTC\n", buff, sim_constructor_start_time%1000000);
 
 
 
@@ -136,9 +137,9 @@ void __attribute__ ((constructor)) sim_init(void)
 
 
 	read_sim_conf();
-	print_sim_conf();
+    //print_sim_conf();
 
-	//sim_read_users();
+	sim_read_users();
 	//sim_print_users();
 
 	/*int new_shared_memory = attach_shared_memory();

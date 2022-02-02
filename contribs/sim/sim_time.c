@@ -211,10 +211,10 @@ void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time
 	process_create_time_real = get_process_create_time();
 	process_create_time_sim = process_create_time_real + (cur_sim_time - cur_real_time);
 
-	info("sim: process create utime: %" PRId64 " process create utime: %" PRId64,
-			process_create_time_real, process_create_time_sim);
-	info("sim: current real utime: %" PRId64 ", current sim utime: %" PRId64,
-			cur_real_time, cur_sim_time);
+	//info("sim: process create utime: %" PRId64 " process create utime: %" PRId64,
+	//		process_create_time_real, process_create_time_sim);
+	//info("sim: current real utime: %" PRId64 ", current sim utime: %" PRId64,
+	//		cur_real_time, cur_sim_time);
 }
 
 void iso8601_from_utime(char **buf, uint64_t utime, bool msec)
