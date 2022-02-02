@@ -1644,7 +1644,7 @@ static void _debug_message_spawn_rpc_agent(agent_arg_t *agent_arg_ptr)
 		kill_job_msg_t * msg = (kill_job_msg_t*)agent_arg_ptr->msg_args;
 		debug2("Spawning RPC agent for msg_type %s for JobId=%d",
 			rpc_num2string(agent_arg_ptr->msg_type),
-			msg->het_job_id);
+			msg->step_id.job_id);
 	}
 	return;
 }
