@@ -33,7 +33,10 @@ AC_DEFUN([X_AC_SIMULATOR], [
     test "$GXX" = yes && CXXFLAGS="$CXXFLAGS -DSLURM_SIMULATOR"
     LIBS="$LIBS -lrt -lm"
     # wrapping getting user and group funtions (getpwnam_r, getpwuid_r, getgrnam_r and getgrgid_r)
-    LDFLAGS="-Wl,-wrap,getpwnam_r -Wl,-wrap,getpwuid_r -Wl,-wrap,getgrnam_r -Wl,-wrap,getgrgid_r $LDFLAGS"
+    WRAP_GETUSER="-Wl,-wrap,getpwnam_r -Wl,-wrap,getpwuid_r -Wl,-wrap,getgrnam_r -Wl,-wrap,getgrgid_r"
+    # wrapping time and sleep functions (gettimeofday)
+    WRAP_TIME="-Wl,-wrap,gettimeofday -Wl,-wrap,time -Wl,-wrap,sleep -Wl,-wrap,usleep -Wl,-wrap,nanosleep"
+    LDFLAGS="$WRAP_GETUSER $WRAP_TIME $LDFLAGS"
     AC_DEFINE([SLURM_SIMULATOR],[1],
       [Define SLURM_SIMULATOR if you are building slurm in simulator mode.]
     )

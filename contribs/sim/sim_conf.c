@@ -92,16 +92,16 @@ int read_sim_conf(void) {
 		}
 
 		if (s_p_get_double(&time_after_all_events_done, "TimeAfterAllEventsDone", tbl)) {
-			slurm_sim_conf->time_after_all_events_done = (uint64_t)(time_after_all_events_done*1.0e6);
+			slurm_sim_conf->time_after_all_events_done = (int64_t)(time_after_all_events_done*1.0e6);
 		}
 		if (s_p_get_double(&first_job_delay, "FirstJobDelay", tbl)) {
-			slurm_sim_conf->first_job_delay = (uint64_t)(first_job_delay*1.0e6);
+			slurm_sim_conf->first_job_delay = (int64_t)(first_job_delay*1.0e6);
 		}
 		if (s_p_get_double(&comp_job_delay, "CompJobDelay", tbl)) {
-			slurm_sim_conf->comp_job_delay = (uint64_t)(comp_job_delay*1.0e6);
+			slurm_sim_conf->comp_job_delay = (int64_t)(comp_job_delay*1.0e6);
 		}
 		if (s_p_get_double(&timelimit_delay, "TimeLimitDelay", tbl)) {
-			slurm_sim_conf->timelimit_delay = (uint64_t)(timelimit_delay*1.0e6);
+			slurm_sim_conf->timelimit_delay = (int64_t)(timelimit_delay*1.0e6);
 		}
 
 		s_p_hashtbl_destroy(tbl);
