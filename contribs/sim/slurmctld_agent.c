@@ -16,6 +16,8 @@ extern void sim_complete_job(uint32_t job_id);
 void sim_epilog_complete(uint32_t job_id)
 {
 	//char *hostname;
+	bool defer_sched = (xstrcasestr(slurm_conf.sched_params, "defer"));
+
 	job_record_t *job_ptr = find_job_record(job_id);
 	slurmctld_lock_t job_write_lock = {
 			NO_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, READ_LOCK };
@@ -30,6 +32,23 @@ void sim_epilog_complete(uint32_t job_id)
 		if (job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS))
 			run_scheduler = true;
 		unlock_slurmctld(job_write_lock);
+
+		if (run_scheduler) {
+			/*
+			 * In defer mode, avoid triggering the scheduler logic
+			 * for every epilog complete message.
+			 * As one epilog message is sent from every node of each
+			 * job at termination, the number of simultaneous schedule
+			 * calls can be very high for large machine or large number
+			 * of managed jobs.
+			 */
+			if (!LOTS_OF_AGENTS && !defer_sched)
+				schedule(false);	/* Has own locking */
+			else
+				queue_job_scheduler();
+			schedule_node_save();		/* Has own locking */
+			schedule_job_save();		/* Has own locking */
+		}
 		sim_remove_active_sim_job(job_id);
 		return;
 	}
@@ -45,6 +64,23 @@ void sim_epilog_complete(uint32_t job_id)
 	if (job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS))
 		run_scheduler = true;
 	unlock_slurmctld(job_write_lock);
+
+	if (run_scheduler) {
+		/*
+		 * In defer mode, avoid triggering the scheduler logic
+		 * for every epilog complete message.
+		 * As one epilog message is sent from every node of each
+		 * job at termination, the number of simultaneous schedule
+		 * calls can be very high for large machine or large number
+		 * of managed jobs.
+		 */
+		if (!LOTS_OF_AGENTS && !defer_sched)
+			schedule(false);	/* Has own locking */
+		else
+			queue_job_scheduler();
+		schedule_node_save();		/* Has own locking */
+		schedule_job_save();		/* Has own locking */
+	}
 
 	//free(hostname);
 	sim_remove_active_sim_job(job_id);
