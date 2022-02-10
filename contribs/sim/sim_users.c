@@ -210,7 +210,7 @@ extern int sim_read_users(void) {
 
 	sim_group = xcalloc(sim_n_groups,sizeof(struct group));
 	for(igroup = 0; igroup < sim_n_groups; ++igroup) {
-		int iuser_in_group;
+		int iuser_in_group=-1;
 		int users_in_group=0;
 		for(iuser=0;iuser<sim_n_users;++iuser) {
 			if(sim_group_id[iuser]==tmp_gid[igroup]) {
@@ -219,7 +219,12 @@ extern int sim_read_users(void) {
 			}
 		}
 
-		sim_group[igroup].gr_name = xstrdup(sim_groupname[iuser_in_group]);
+		if(iuser_in_group>=0) {
+			sim_group[igroup].gr_name = xstrdup(sim_groupname[iuser_in_group]);
+		} else {
+			sim_group[igroup].gr_name = xstrdup("UNKNOWN");
+		}
+
 		sim_group[igroup].gr_passwd = xstrdup("password");
 		sim_group[igroup].gr_gid = tmp_gid[igroup];
 

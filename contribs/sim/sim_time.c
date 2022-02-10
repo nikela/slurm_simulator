@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <time.h>
 #include <stdint.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -19,6 +20,7 @@
 #include <inttypes.h>
 
 #include "sim_time.h"
+#include "sim.h"
 
 //should be in shared memory
 extern int64_t *sim_timeval_shift;
@@ -70,9 +72,9 @@ int64_t get_real_utime()
 int64_t get_sim_utime()
 {
 	return get_real_utime();
-	/*int64_t cur_real_utime = get_real_utime();
+	int64_t cur_real_utime = get_real_utime();
 	int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
-	return cur_sim_time;*/
+	return cur_sim_time;
 }
 
 void set_sim_time_and_scale(int64_t cur_sim_time, double scale)
@@ -265,10 +267,14 @@ void iso8601_from_utime(char **buf, uint64_t utime, bool msec)
 		_xstrfmtcat(buf, "%s", p);
 }
 
+int64_t sim_main_thread_sleep_till = 0;
+int64_t sim_plugin_sched_thread_sleep_till = 0;
+
 int sim_sleep (int64_t usec)
 {
-	/*if (real_sleep_usec > usec) {
-		real_sleep_usec = usec;
+	int64_t real_usec = real_sleep_usec;
+	if (real_usec > usec) {
+		real_usec = usec;
 	};
 	int64_t sleep_till = get_sim_utime() + usec;
 
@@ -279,24 +285,88 @@ int sim_sleep (int64_t usec)
 	}
 
 	while(get_sim_utime() <= sleep_till){
-		real_usleep(real_sleep_usec);
+		__real_usleep(real_sleep_usec);
 	}
 
 	if(pthread_self() == sim_main_thread) {
 		sim_main_thread_sleep_till = 0;
 	} else if(pthread_self() == sim_plugin_sched_thread) {
 		sim_plugin_sched_thread_sleep_till = 0;
-	}*/
-	__real_usleep(usec);
+	}
+	//__real_usleep(usec);
 	return 0;
+}
+
+void slurm_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime)
+{
+	do {
+		int err = pthread_cond_timedwait(cond, mutex, abstime);
+		if (err && (err != ETIMEDOUT)) {
+			errno = err;
+			error("%s:%d %s: pthread_cond_timedwait(): %m",
+			      __FILE__, __LINE__, __func__);
+		}
+	} while (0);
+}
+
+void slurm_cond_timedwait2(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime)
+{
+	int nanosecondswait=1000000;
+	int64_t abstime_sim = abstime->tv_sec * 1000000 + (abstime->tv_nsec/1000);
+	int64_t real_utime = get_real_utime();
+	int64_t sim_utime = get_sim_utime();
+	int64_t abstime_real = abstime_sim + (real_utime-sim_utime);
+	int64_t next_real_time;
+	struct timespec ts;
+	int err;
+	struct timespec abstime_real_ts;
+
+	abstime_real_ts.tv_sec = abstime_real/1000000;
+	abstime_real_ts.tv_nsec = (abstime_real%1000000)*1000;
+
+	if( pthread_self()==sim_plugin_sched_thread ) {
+		// @TODO check that that is the case in newer versions
+		// back filler don't have case of cond triggering
+		sim_sleep(abstime_sim-sim_utime);
+		return;
+	}
+
+	do {
+		clock_gettime(CLOCK_REALTIME, &ts);
+
+		ts.tv_nsec = ts.tv_nsec + nanosecondswait;
+
+		if(ts.tv_nsec >=  1000000000) {
+			ts.tv_sec += ts.tv_nsec / 1000000000;
+			ts.tv_nsec = ts.tv_nsec % 1000000000;
+		}
+
+		next_real_time = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+
+		if(next_real_time < abstime_real) {
+			next_real_time = abstime_real;
+		}
+		err = pthread_cond_timedwait(cond, mutex, &abstime_real_ts);
+		if (err && (err != ETIMEDOUT)) {
+			errno = err;
+			error("%s:%d %s: pthread_cond_timedwait(): %m",
+				  __FILE__, __LINE__, __func__);
+			break;
+		}
+		if (err==0) {
+			// i.e. got signal
+			break;
+		}
+
+	} while (get_sim_utime() < abstime_sim);
 }
 
 unsigned int __wrap_sleep (unsigned int seconds)
 {
-	//return real_sleep(seconds);
+	return __real_sleep(seconds);
 	/*int64_t sleep_till = get_sim_utime() + 1000000 * seconds;
 	while(get_sim_utime() < sleep_till){
-		real_usleep(1000);
+		__real_usleep(1000);
 	}
 	return 0;*/
 	int64_t usec = ((int64_t)seconds)*1000000;
@@ -305,29 +375,30 @@ unsigned int __wrap_sleep (unsigned int seconds)
 
 int __wrap_usleep (useconds_t usec)
 {
-	/*return real_usleep(usec);
-	useconds_t real_usec = 100;
+	return __real_usleep(usec);
+	/*useconds_t real_usec = real_sleep_usec;
 	if (real_usec > usec) {
 		real_usec = usec;
 	};
 	int64_t sleep_till = get_sim_utime() + usec;
 	while(get_sim_utime() <= sleep_till){
-		real_usleep(real_usec);
-	}*/
-	return sim_sleep(usec);
+		__real_usleep(real_usec);
+	}
+	return 0;*/
+	//return sim_sleep(usec);
 }
 
 int __wrap_nanosleep (const struct timespec *req, struct timespec *rem)
 {
 	return __real_nanosleep(req, rem);
-	int64_t nanosec = req->tv_sec*1000000000+req->tv_nsec;
+	/*int64_t nanosec = req->tv_sec*1000000000+req->tv_nsec;
 	int64_t usec = nanosec/1000;
 	__wrap_usleep(usec);
 	if(rem!=NULL) {
 		rem->tv_sec = 0;
 		rem->tv_nsec = 0;
 	}
-	return 0;
+	return 0;*/
 }
 
 
