@@ -142,10 +142,10 @@ void __attribute__ ((constructor)) sim_init(void)
 	sim_read_users();
 	//sim_print_users();
 
-	/*int new_shared_memory = attach_shared_memory();
+	int new_shared_memory = attach_shared_memory();
 
 	if (new_shared_memory < 0) {
-		error("Error attaching/building shared memory and mmaping it");
+		error("Error attaching/building shared memory and maping it");
 		exit(1);
 	};
 
@@ -156,9 +156,11 @@ void __attribute__ ((constructor)) sim_init(void)
 		set_time = 1;
 	}
 
-	if(slurm_sim_conf->time_start!=0) {
+	if(slurm_sim_conf->time_start==0) {
+		set_time_to_real = 1;
+	} else {
 		set_time_to_real = 0;
-	}*/
+	}
 
 	init_sim_time(slurm_sim_conf->time_start, slurm_sim_conf->clock_scaling,
 			set_time, set_time_to_real);

@@ -108,7 +108,7 @@ int read_sim_conf(void) {
 	}
 
 	/* not there yet */
-	slurm_sim_conf->time_start=0;
+	//slurm_sim_conf->time_start=0;
 	slurm_sim_conf->clock_scaling=1.0;
 
 	xfree(conf_path);

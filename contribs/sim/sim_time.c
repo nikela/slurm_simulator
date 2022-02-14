@@ -71,7 +71,7 @@ int64_t get_real_utime()
 /* return simulated time in microseconds */
 int64_t get_sim_utime()
 {
-	return get_real_utime();
+	//return get_real_utime();
 	int64_t cur_real_utime = get_real_utime();
 	int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
 	return cur_sim_time;
@@ -297,19 +297,37 @@ int sim_sleep (int64_t usec)
 	return 0;
 }
 
-void slurm_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime)
+void slurm_cond_timedwait0(pthread_cond_t *cond, pthread_mutex_t *mutex,
+		const struct timespec *abstime,
+		const char *filename,
+		const int line,
+		const char *func)
 {
-	do {
-		int err = pthread_cond_timedwait(cond, mutex, abstime);
-		if (err && (err != ETIMEDOUT)) {
-			errno = err;
-			error("%s:%d %s: pthread_cond_timedwait(): %m",
-			      __FILE__, __LINE__, __func__);
-		}
-	} while (0);
+	int64_t abstime_sim = abstime->tv_sec * 1000000 + (abstime->tv_nsec/1000);
+	int64_t real_utime = get_real_utime();
+	int64_t sim_utime = get_sim_utime();
+	int64_t abstime_real = abstime_sim + (real_utime-sim_utime);
+	struct timespec abstime_real_ts;
+
+	int err;
+
+
+	abstime_real_ts.tv_sec = abstime_real/1000000;
+	abstime_real_ts.tv_nsec = (abstime_real%1000000)*1000;
+
+	err = pthread_cond_timedwait(cond, mutex, &abstime_real_ts);
+	if (err && (err != ETIMEDOUT)) {
+		errno = err;
+		error("%s:%d %s: pthread_cond_timedwait(): %m",
+				filename, line, func);
+	}
 }
 
-void slurm_cond_timedwait2(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime)
+void slurm_cond_timedwait1(pthread_cond_t *cond,
+		pthread_mutex_t *mutex, const struct timespec *abstime,
+		const char *filename,
+		const int line,
+		const char *func)
 {
 	int nanosecondswait=1000000;
 	int64_t abstime_sim = abstime->tv_sec * 1000000 + (abstime->tv_nsec/1000);
@@ -350,7 +368,7 @@ void slurm_cond_timedwait2(pthread_cond_t *cond, pthread_mutex_t *mutex, const s
 		if (err && (err != ETIMEDOUT)) {
 			errno = err;
 			error("%s:%d %s: pthread_cond_timedwait(): %m",
-				  __FILE__, __LINE__, __func__);
+					filename, line, func);
 			break;
 		}
 		if (err==0) {

@@ -143,7 +143,11 @@
 		}							\
 	} while (0)
 #else
-extern void slurm_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime);
+extern void slurm_cond_timedwait0(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime,
+		const char *filename,
+		const int line,
+		const char *func);
+#define slurm_cond_timedwait(cond, mutex, abstime) slurm_cond_timedwait0(cond, mutex, abstime, __FILE__, __LINE__, __func__)
 #endif
 
 #define slurm_cond_destroy(cond)					\
