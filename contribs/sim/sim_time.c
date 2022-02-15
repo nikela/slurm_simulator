@@ -297,7 +297,7 @@ int sim_sleep (int64_t usec)
 	return 0;
 }
 
-void slurm_cond_timedwait0(pthread_cond_t *cond, pthread_mutex_t *mutex,
+void slurm_cond_timedwait1(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		const struct timespec *abstime,
 		const char *filename,
 		const int line,
@@ -323,7 +323,7 @@ void slurm_cond_timedwait0(pthread_cond_t *cond, pthread_mutex_t *mutex,
 	}
 }
 
-void slurm_cond_timedwait1(pthread_cond_t *cond,
+void slurm_cond_timedwait0(pthread_cond_t *cond,
 		pthread_mutex_t *mutex, const struct timespec *abstime,
 		const char *filename,
 		const int line,
@@ -342,12 +342,12 @@ void slurm_cond_timedwait1(pthread_cond_t *cond,
 	abstime_real_ts.tv_sec = abstime_real/1000000;
 	abstime_real_ts.tv_nsec = (abstime_real%1000000)*1000;
 
-	if( pthread_self()==sim_plugin_sched_thread ) {
-		// @TODO check that that is the case in newer versions
-		// back filler don't have case of cond triggering
-		sim_sleep(abstime_sim-sim_utime);
-		return;
-	}
+//	if( pthread_self()==sim_plugin_sched_thread ) {
+//		// @TODO check that that is the case in newer versions
+//		// back filler don't have case of cond triggering
+//		sim_sleep(abstime_sim-sim_utime);
+//		return;
+//	}
 
 	do {
 		clock_gettime(CLOCK_REALTIME, &ts);
