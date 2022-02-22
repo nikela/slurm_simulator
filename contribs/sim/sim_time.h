@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+/* actual sleeping in sleep functions between sim time check */
+extern int64_t real_sleep_usec;
+
 /* process creation real time in microseconds */
 extern int64_t process_create_time_real;
 /* process creation simulated time  in microseconds */

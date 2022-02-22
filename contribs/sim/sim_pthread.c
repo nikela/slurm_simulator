@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
-
+#include "sim.h"
 
 int sim_pthread_create (pthread_t *newthread,
 		const pthread_attr_t *attr,
@@ -61,12 +61,12 @@ int sim_pthread_create (pthread_t *newthread,
 
 	if (xstrcmp("&backfill_thread", id) == 0) {
 		debug("backfill_thread");
-		//sim_plugin_sched_thread=*newthread;
-		//sim_plugin_sched_thread_isset = 1;
+		sim_plugin_sched_thread=*newthread;
+		sim_plugin_sched_thread_isset = 1;
 	} else if (xstrcmp("&builtin_thread", id) == 0) {
 		debug("builtin_thread");
-		//sim_plugin_sched_thread = *newthread;
-		//sim_plugin_sched_thread_isset = 1;
+		sim_plugin_sched_thread = *newthread;
+		sim_plugin_sched_thread_isset = 1;
 	}
 	return err;
 }
