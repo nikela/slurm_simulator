@@ -272,7 +272,9 @@ int64_t sim_plugin_sched_thread_sleep_till = 0;
 
 int sim_sleep (int64_t usec)
 {
-	int64_t sim_time = get_sim_utime();
+	return __real_usleep(usec);
+
+/*	int64_t sim_time = get_sim_utime();
 	int64_t real_usec = real_sleep_usec;
 	if (real_usec > usec) {
 		real_usec = usec;
@@ -303,7 +305,7 @@ int sim_sleep (int64_t usec)
 		sim_plugin_sched_thread_sleep_till = 0;
 	}
 	//__real_usleep(usec);
-	return 0;
+	return 0;*/
 }
 
 void slurm_cond_timedwait1(pthread_cond_t *cond, pthread_mutex_t *mutex,
@@ -390,30 +392,29 @@ void slurm_cond_timedwait0(pthread_cond_t *cond,
 
 unsigned int __wrap_sleep (unsigned int seconds)
 {
-    return __real_sleep(seconds);
-	//int64_t usec = ((int64_t)seconds)*1000000;
-	//return sim_sleep(usec);
+    //return __real_sleep(seconds);
+	int64_t usec = ((int64_t)seconds)*1000000;
+	return sim_sleep(usec);
 }
 
 int __wrap_usleep (useconds_t usec)
 {
-    return __real_usleep(usec);
-	//return sim_sleep(usec);
+    //return __real_usleep(usec);
+	return sim_sleep(usec);
 }
 
 int __wrap_nanosleep (const struct timespec *req, struct timespec *rem)
 {
-    return __real_nanosleep(req, rem);
-//	int64_t nanosec = req->tv_sec*1000000000+req->tv_nsec;
-//	int64_t usec = nanosec/1000;
-//
-//	sim_sleep(usec);
-//
-//	if(rem!=NULL) {
-//		rem->tv_sec = 0;
-//		rem->tv_nsec = 0;
-//	}
-//	return 0;
+	int64_t nanosec = req->tv_sec*1000000000+req->tv_nsec;
+	int64_t usec = nanosec/1000;
+
+	sim_sleep(usec);
+
+	if(rem!=NULL) {
+		rem->tv_sec = 0;
+		rem->tv_nsec = 0;
+	}
+	return 0;
 }
 
 
