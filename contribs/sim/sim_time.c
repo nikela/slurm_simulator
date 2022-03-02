@@ -272,9 +272,8 @@ int64_t sim_plugin_sched_thread_sleep_till = 0;
 
 int sim_sleep (int64_t usec)
 {
-	return __real_usleep(usec);
-
-/*	int64_t sim_time = get_sim_utime();
+//	int64_t dt = usec;
+	int64_t sim_time = get_real_utime();//get_sim_utime();
 	int64_t real_usec = real_sleep_usec;
 	if (real_usec > usec) {
 		real_usec = usec;
@@ -283,19 +282,20 @@ int sim_sleep (int64_t usec)
 
 	if(pthread_self() == sim_main_thread) {
 		sim_main_thread_sleep_till = sleep_till;
-		debug2("sim_main_thread_sleep_till: (%d) usec", usec);
+		//debug2("sim_main_thread_sleep_till: (%" PRId64 ") usec", usec);
 	} else if(pthread_self() == sim_plugin_sched_thread) {
 		sim_plugin_sched_thread_sleep_till = sleep_till;
-		debug2("sim_plugin_sched_thread_sleep_till: (%d) usec", usec);
+		//debug2("sim_plugin_sched_thread_sleep_till: (%" PRId64 ") usec", usec);
 	}
 
-//	while(sim_time < sleep_till){
-//		if(sleep_till-sim_time > real_usec) {
+//	while(dt > 0){
+//		if(dt > real_usec) {
 //			__real_usleep(real_usec);
 //		} else {
-//			__real_usleep(sleep_till-sim_time);
+//			__real_usleep(dt);
 //		}
-//		sim_time = get_sim_utime();
+//		sim_time = get_real_utime();
+//		dt = sleep_till-sim_time;
 //	}
 	__real_usleep(usec);
 
@@ -305,7 +305,7 @@ int sim_sleep (int64_t usec)
 		sim_plugin_sched_thread_sleep_till = 0;
 	}
 	//__real_usleep(usec);
-	return 0;*/
+	return 0;
 }
 
 void slurm_cond_timedwait1(pthread_cond_t *cond, pthread_mutex_t *mutex,

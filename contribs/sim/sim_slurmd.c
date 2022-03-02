@@ -26,8 +26,14 @@ static int _set_slurmd_arg(int argc, char **argv)
 	return 0;
 }
 
-extern int sim_init_slurmd(int argc, char **argv)
+extern int sim_init_slurmd()
 {
+	int argc=1;
+	char **argv=xcalloc(2,sizeof(char *));
+	argv[0]=xstrdup("slurmd");
+	argv[1]=NULL;
+
+	optind=0;
 	/*
 	 * Create and set default values for the slurmd global
 	 * config variable "conf"
@@ -45,7 +51,6 @@ extern int sim_init_slurmd(int argc, char **argv)
 		fflush( NULL);
 		exit(1);
 	}
-
 	// rewind getopt
 	optind = 1;
 
@@ -54,14 +59,6 @@ extern int sim_init_slurmd(int argc, char **argv)
 
 extern int sim_registration_engine()
 {
-	int argc=1;
-	char **argv=xcalloc(2,sizeof(char *));
-	argv[0]=xstrdup("slurmd");
-	argv[1]=NULL;
-
-	optind=0;
-
-	sim_init_slurmd(argc, argv);
 	DEF_TIMERS;
 	START_TIMER;
 	while (1) {

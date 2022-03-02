@@ -20,7 +20,7 @@
 pthread_t thread_id_event_thread;
 
 extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job);
-extern int sim_init_slurmd(int argc, char **argv);
+extern int sim_init_slurmd();
 
 /*
  * read and remove simulation related arguments
@@ -257,7 +257,7 @@ main (int argc, char **argv)
 	info("Starting Slurm Simulator");
 
 
-	//sim_init_slurmd(argc, argv);
+	sim_init_slurmd();
 
 
 	// correct for simulator init time
