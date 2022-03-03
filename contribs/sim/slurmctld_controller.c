@@ -21,6 +21,8 @@ pthread_t thread_id_event_thread;
 
 extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job);
 extern int sim_init_slurmd();
+extern void sim_epilog_complete(uint32_t job_id);
+extern int sim_registration_engine();
 
 /*
  * read and remove simulation related arguments
@@ -88,7 +90,7 @@ void sim_complete_job(uint32_t job_id)
 		job_ptr->user_id, job_id);
 
 	if(IS_JOB_COMPLETING(job_ptr)){
-		job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
+		sim_epilog_complete(job_ptr->job_id);
 		sim_remove_active_sim_job(job_id);
 		return;
 	}
@@ -114,10 +116,6 @@ void sim_complete_job(uint32_t job_id)
 
 	sim_insert_event_epilog_complete(job_id);
 }
-
-extern void sim_epilog_complete(uint32_t job_id);
-extern int sim_registration_engine();
-
 
 void *sim_events_thread(void *no_data)
 {
@@ -193,19 +191,19 @@ void *sim_events_thread(void *no_data)
 //		int64_t skip_usec;
 //		if(cur_real_utime-process_create_time_real>10000000 && all_done==0 && sim_main_thread_sleep_till > 0 && sim_plugin_sched_thread_sleep_till > 0) {
 //			// main thread is slepping (run walllimit check) and backfiller is sleeping
-//			debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
-//			debug2("sim_plugin_sched_thread_sleep %ld", sim_plugin_sched_thread_sleep_till-get_sim_utime());
+//			//debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
+//			//debug2("sim_plugin_sched_thread_sleep %ld", sim_plugin_sched_thread_sleep_till-get_sim_utime());
 //			skipping_to_utime = sim_main_thread_sleep_till;
 //			skipping_to_utime = MIN(skipping_to_utime, sim_plugin_sched_thread_sleep_till);
 //			skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
 //			now = get_sim_utime();
 //			skip_usec = skipping_to_utime - now - real_sleep_usec;
 //			if( skip_usec > real_sleep_usec ) {
-//				if(skip_usec > 1000000) {
-//					skip_usec = 1000000;
+//				if(skip_usec > 90000) {
+//					skip_usec = 90000;
+//					debug2("skipping %" PRId64 " usec", skip_usec);
+//					set_sim_time(now + skip_usec);
 //				}
-//				debug2("skipping %ld usec", skip_usec);
-//				//set_sim_time(now + skip_usec);
 //			}
 //		}
 
