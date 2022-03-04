@@ -90,7 +90,7 @@ void set_sim_time_and_scale(int64_t cur_sim_time, double scale)
 	*sim_timeval_shift = (int64_t)((1.0-*sim_timeval_scale)*cur_sim_time) -
 			(int64_t)(*sim_timeval_scale * (cur_real_utime - cur_sim_time));
 
-	debug2("sim_timeval_shift %ld sim_timeval_scale %f\n\n", *sim_timeval_shift, *sim_timeval_scale);
+	//debug2("sim_timeval_shift %ld sim_timeval_scale %f\n\n", *sim_timeval_shift, *sim_timeval_scale);
 }
 
 void set_sim_time_scale(double scale)
@@ -272,8 +272,8 @@ int64_t sim_plugin_sched_thread_sleep_till = 0;
 
 int sim_sleep (int64_t usec)
 {
-//	int64_t dt = usec;
-	int64_t sim_time = get_real_utime();//get_sim_utime();
+	int64_t dt = usec;
+	int64_t sim_time = get_sim_utime();//get_sim_utime();
 	int64_t real_usec = real_sleep_usec;
 	if (real_usec > usec) {
 		real_usec = usec;
@@ -288,16 +288,16 @@ int sim_sleep (int64_t usec)
 		//debug2("sim_plugin_sched_thread_sleep_till: (%" PRId64 ") usec", usec);
 	}
 
-//	while(dt > 0){
-//		if(dt > real_usec) {
-//			__real_usleep(real_usec);
-//		} else {
-//			__real_usleep(dt);
-//		}
-//		sim_time = get_real_utime();
-//		dt = sleep_till-sim_time;
-//	}
-	__real_usleep(usec);
+	while(dt > 0){
+		if(dt > real_usec) {
+			__real_usleep(real_usec);
+		} else {
+			__real_usleep(dt);
+		}
+		sim_time = get_sim_utime();
+		dt = sleep_till-sim_time;
+	}
+	//__real_usleep(usec);
 
 	if(pthread_self() == sim_main_thread) {
 		sim_main_thread_sleep_till = 0;
@@ -340,7 +340,7 @@ void slurm_cond_timedwait0(pthread_cond_t *cond,
 		const int line,
 		const char *func)
 {
-	int nanosecondswait=1000000;
+	int nanosecondswait=1000;
 	int64_t abstime_sim = abstime->tv_sec * 1000000 + (abstime->tv_nsec/1000);
 	int64_t real_utime = get_real_utime();
 	int64_t sim_utime = get_sim_utime();
@@ -353,12 +353,12 @@ void slurm_cond_timedwait0(pthread_cond_t *cond,
 	abstime_real_ts.tv_sec = abstime_real/1000000;
 	abstime_real_ts.tv_nsec = (abstime_real%1000000)*1000;
 
-//	if( pthread_self()==sim_plugin_sched_thread ) {
-//		// @TODO check that that is the case in newer versions
-//		// back filler don't have case of cond triggering
-//		sim_sleep(abstime_sim-sim_utime);
-//		return;
-//	}
+	if( pthread_self()==sim_plugin_sched_thread ) {
+		// @TODO check that that is the case in newer versions
+		// back filler don't have case of cond triggering
+		sim_sleep(abstime_sim-sim_utime);
+		return;
+	}
 
 	do {
 		clock_gettime(CLOCK_REALTIME, &ts);

@@ -187,25 +187,25 @@ void *sim_events_thread(void *no_data)
 			//jobs_submit_count++;
 		}
 		/*check can we skip some time*/
-//		int64_t skipping_to_utime = INT64_MAX;
-//		int64_t skip_usec;
-//		if(cur_real_utime-process_create_time_real>10000000 && all_done==0 && sim_main_thread_sleep_till > 0 && sim_plugin_sched_thread_sleep_till > 0) {
-//			// main thread is slepping (run walllimit check) and backfiller is sleeping
-//			//debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
-//			//debug2("sim_plugin_sched_thread_sleep %ld", sim_plugin_sched_thread_sleep_till-get_sim_utime());
-//			skipping_to_utime = sim_main_thread_sleep_till;
-//			skipping_to_utime = MIN(skipping_to_utime, sim_plugin_sched_thread_sleep_till);
-//			skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
-//			now = get_sim_utime();
-//			skip_usec = skipping_to_utime - now - real_sleep_usec;
-//			if( skip_usec > real_sleep_usec ) {
-//				if(skip_usec > 90000) {
-//					skip_usec = 90000;
-//					debug2("skipping %" PRId64 " usec", skip_usec);
-//					set_sim_time(now + skip_usec);
-//				}
-//			}
-//		}
+		int64_t skipping_to_utime = INT64_MAX;
+		int64_t skip_usec;
+		if(cur_real_utime-process_create_time_real>10000000 && all_done==0 && sim_main_thread_sleep_till > 0 && sim_plugin_sched_thread_sleep_till > 0) {
+			// main thread is slepping (run walllimit check) and backfiller is sleeping
+			//debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
+			//debug2("sim_plugin_sched_thread_sleep %ld", sim_plugin_sched_thread_sleep_till-get_sim_utime());
+			skipping_to_utime = sim_main_thread_sleep_till;
+			skipping_to_utime = MIN(skipping_to_utime, sim_plugin_sched_thread_sleep_till);
+			skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
+			now = get_sim_utime();
+			skip_usec = skipping_to_utime - now - real_sleep_usec;
+			if( skip_usec > real_sleep_usec ) {
+				if(skip_usec > 90000) {
+					skip_usec = 90000;
+					debug2("skipping %" PRId64 " usec", skip_usec);
+					set_sim_time(now + skip_usec);
+				}
+			}
+		}
 
 
 
