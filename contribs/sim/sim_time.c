@@ -289,11 +289,11 @@ int sim_sleep (int64_t usec)
 	}
 
 	while(dt > 0){
-		if(dt > real_usec) {
-			__real_usleep(real_usec);
-		} else {
-			__real_usleep(dt);
-		}
+//		if(dt > real_usec) {
+//			__real_usleep(real_usec);
+//		} else {
+//			__real_usleep(dt);
+//		}
 		sim_time = get_sim_utime();
 		dt = sleep_till-sim_time;
 	}
