@@ -119,7 +119,7 @@
 				__FILE__, __LINE__, __func__);		\
 		}							\
 	} while (0)
-
+#ifndef SLURM_SIMULATOR
 #define slurm_cond_wait(cond, mutex)					\
 	do {								\
 		int err = pthread_cond_wait(cond, mutex);		\
@@ -130,7 +130,6 @@
 		}							\
 	} while (0)
 
-#ifndef SLURM_SIMULATOR
 /* ignore timeouts, you must be able to handle them if
  * calling cond_timedwait instead of cond_wait */
 #define slurm_cond_timedwait(cond, mutex, abstime)			\
@@ -143,6 +142,13 @@
 		}							\
 	} while (0)
 #else
+extern int slurm_cond_wait0 (pthread_cond_t * __cond, pthread_mutex_t * __mutex,
+		const char *filename,
+		const int line,
+		const char *func);
+
+#define slurm_cond_wait(cond, mutex) slurm_cond_wait0(cond, mutex, __FILE__, __LINE__, __func__)
+
 extern void slurm_cond_timedwait0(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime,
 		const char *filename,
 		const int line,
@@ -327,15 +333,17 @@ extern int sim_pthread_create (pthread_t *newthread,
 		void *(*start_routine) (void *),
 		void *arg,
 		const char *id,
+		const char *sarg,
 		const char *func,
 		const char *filename,
-		const char *note);
+		const char *note,
+		const int line);
 #define slurm_thread_create(id, func, arg)				\
 	do {								\
 		pthread_attr_t attr;					\
 		int err;						\
 		slurm_attr_init(&attr);					\
-		err = sim_pthread_create(id, &attr, func, arg, #id, #func,__FILE__,"");		\
+		err = sim_pthread_create(id, &attr, func, arg, #id, #arg, #func,__FILE__,"",__LINE__);		\
 		if (err) {						\
 			errno = err;					\
 			fatal("%s: pthread_create error %m", __func__);	\
@@ -382,8 +390,8 @@ extern int sim_pthread_create (pthread_t *newthread,
 			errno = err;					\
 			fatal("%s: pthread_attr_setdetachstate %m",	\
 			      __func__);				\
-		}							\
-        err = sim_pthread_create(&id_local, &attr, func, arg, "id_local", #func, __FILE__,"detached");	\
+		} 						\
+		err = sim_pthread_create(&id_local, &attr, func, arg, "id_local", #arg, #func, __FILE__,"detached",__LINE__);		\
 		if (err) {						\
 			errno = err;					\
 			fatal("%s: pthread_create error %m", __func__);	\

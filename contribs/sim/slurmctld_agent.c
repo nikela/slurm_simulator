@@ -42,10 +42,14 @@ void sim_epilog_complete(uint32_t job_id)
 			 * calls can be very high for large machine or large number
 			 * of managed jobs.
 			 */
-			if (!LOTS_OF_AGENTS && !defer_sched)
+			if (!LOTS_OF_AGENTS && !defer_sched){
+				debug3("Calling schedule from epilog_complete");
 				schedule(false);	/* Has own locking */
-			else
+			}
+			else{
+				debug3("Calling queue_job_scheduler from epilog_complete");
 				queue_job_scheduler();
+			}
 			schedule_node_save();		/* Has own locking */
 			schedule_job_save();		/* Has own locking */
 		}
@@ -74,10 +78,14 @@ void sim_epilog_complete(uint32_t job_id)
 		 * calls can be very high for large machine or large number
 		 * of managed jobs.
 		 */
-		if (!LOTS_OF_AGENTS && !defer_sched)
+		if (!LOTS_OF_AGENTS && !defer_sched){
+			debug3("Calling schedule from epilog_complete");
 			schedule(false);	/* Has own locking */
-		else
+		}
+		else{
+			debug3("Calling queue_job_scheduler from epilog_complete");
 			queue_job_scheduler();
+		}
 		schedule_node_save();		/* Has own locking */
 		schedule_job_save();		/* Has own locking */
 	}

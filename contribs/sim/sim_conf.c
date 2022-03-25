@@ -26,8 +26,8 @@ slurm_sim_conf_t *slurm_sim_conf = NULL;
 
 int read_sim_conf(void) {
 	s_p_options_t options[] = {
-			{"TimeStart", S_P_UINT32 },
-			{"TimeStop", S_P_UINT32 },
+			{"TimeStart", S_P_DOUBLE },
+			{"TimeStop", S_P_DOUBLE },
 			{"SecondsBeforeFirstJob", S_P_DOUBLE },
 			{"ClockScaling", S_P_DOUBLE },
 			{"SharedMemoryName", S_P_STRING },
@@ -45,12 +45,14 @@ int read_sim_conf(void) {
 	double first_job_delay;
 	double comp_job_delay;
 	double timelimit_delay;
+	double time_start;
+	double time_stop;
 
 	/* Set initial values */
 	if (slurm_sim_conf == NULL) {
 		slurm_sim_conf = xmalloc(sizeof(slurm_sim_conf_t));
 	}
-	slurm_sim_conf->time_start = 978325200;
+	slurm_sim_conf->time_start = 978325200000000;
 	slurm_sim_conf->time_stop = 0;
 	slurm_sim_conf->microseconds_before_first_job = 30000000;
 
@@ -70,8 +72,13 @@ int read_sim_conf(void) {
 			fatal("SIM: Could not open/read/parse sim.conf file %s", conf_path);
 		}
 
-		s_p_get_uint32(&slurm_sim_conf->time_start, "TimeStart", tbl);
-		s_p_get_uint32(&slurm_sim_conf->time_stop, "TimeStop", tbl);
+		if (s_p_get_double(&time_start, "TimeStart", tbl)) {
+			slurm_sim_conf->time_start = (int64_t)(time_start*1.0e6);
+		}
+		if (s_p_get_double(&time_stop, "TimeStop", tbl)) {
+			slurm_sim_conf->time_stop = (int64_t)(time_stop*1.0e6);
+		}
+
 		if (s_p_get_double(&seconds_before_first_job, "SecondsBeforeFirstJob", tbl)) {
 			slurm_sim_conf->microseconds_before_first_job = (uint64_t)(seconds_before_first_job*1.0e6);
 		}
@@ -118,8 +125,8 @@ int read_sim_conf(void) {
 
 int print_sim_conf(void) {
 	info("Sim: Slurm simulator configuration:");
-	info("TimeStart=%u", slurm_sim_conf->time_start);
-	info("TimeStop=%u", slurm_sim_conf->time_stop);
+	info("TimeStart=%" PRIu64, slurm_sim_conf->time_start);
+	info("TimeStop=%" PRIu64, slurm_sim_conf->time_stop);
 	if (slurm_sim_conf->time_stop == 0)
 		info("    i.e. Slurm Simulator spins forever");
 	if (slurm_sim_conf->time_stop == 1)
@@ -138,9 +145,9 @@ int print_sim_conf(void) {
 		info("EventsFile=(null)");
 
 	info("TimeAfterAllEventsDone=%lu", slurm_sim_conf->time_after_all_events_done);
-	info("FirstJobDelay=%ld", slurm_sim_conf->first_job_delay);
-	info("CompJobDelay=%ld", slurm_sim_conf->comp_job_delay);
-	info("TimeLimitDelay=%ld", slurm_sim_conf->timelimit_delay);
+	info("FirstJobDelay=%" PRId64, slurm_sim_conf->first_job_delay);
+	info("CompJobDelay=%" PRId64, slurm_sim_conf->comp_job_delay);
+	info("TimeLimitDelay=%" PRId64, slurm_sim_conf->timelimit_delay);
 
 	return SLURM_SUCCESS;
 }

@@ -2,6 +2,10 @@
  * this source wrap slurmctld/controller.c during slurmctld building
  * contains main simulated event loop
  */
+#include <inttypes.h>
+extern int64_t sim_main_thread_sleep_till;
+extern int64_t sim_sched_thread_cond_wait_till;
+extern int64_t sim_plugin_backfill_thread_sleep_till;
 
 #define main slurmctld_main
 #include "../../src/slurmctld/controller.c"
@@ -189,23 +193,46 @@ void *sim_events_thread(void *no_data)
 		/*check can we skip some time*/
 		int64_t skipping_to_utime = INT64_MAX;
 		int64_t skip_usec;
-		if(cur_real_utime-process_create_time_real>10000000 && all_done==0 && sim_main_thread_sleep_till > 0 && sim_plugin_sched_thread_sleep_till > 0) {
+		if(cur_real_utime-process_create_time_real>10000000 && all_done==0 &&
+				sim_main_thread_sleep_till > 0 &&
+				sim_sched_thread_cond_wait_till > 0 &&
+				sim_plugin_backfill_thread_sleep_till > 0 &&
+				sim_next_event->when > now) {
+			// sim_sched_thread_sleep_till > 0 &&
+			// mainthread kick sim_plugin_sched_thread_sleep_till
+
+
 			// main thread is slepping (run walllimit check) and backfiller is sleeping
 			//debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
-			//debug2("sim_plugin_sched_thread_sleep %ld", sim_plugin_sched_thread_sleep_till-get_sim_utime());
+			//debug2("sim_plugin_sched_thread_sleep %ld", sim_sched_thread_sleep_till-get_sim_utime());
 			skipping_to_utime = sim_main_thread_sleep_till;
-			skipping_to_utime = MIN(skipping_to_utime, sim_plugin_sched_thread_sleep_till);
+			skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
+			//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 			skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
+			skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
+
 			now = get_sim_utime();
-			skip_usec = skipping_to_utime - now - real_sleep_usec;
+			skip_usec = skipping_to_utime - now - 10000;
 			if( skip_usec > real_sleep_usec ) {
-				if(skip_usec > 90000) {
-					skip_usec = 90000;
-					debug2("skipping %" PRId64 " usec", skip_usec);
+				if(skip_usec > 50000) {
+					skip_usec = 50000;
+				}
+				if(skip_usec > 10000) {
+					//debug2("skipping %" PRId64 " usec", skip_usec);
 					set_sim_time(now + skip_usec);
+					//now = get_sim_utime();
 				}
 			}
 		}
+//		else {
+//			debug2("NotSkipping %d %d %d %d %d %d",
+//					cur_real_utime-process_create_time_real>10000000,
+//					all_done==0,
+//					sim_main_thread_sleep_till > 0,
+//					sim_sched_thread_cond_wait_till > 0,
+//					sim_plugin_backfill_thread_sleep_till > 0,
+//					sim_next_event->when > now);
+//		}
 
 
 

@@ -7,7 +7,12 @@ extern int64_t sim_constructor_start_time;
 
 /*threads*/
 extern pthread_t sim_main_thread;
-extern int sim_plugin_sched_thread_isset;
-extern pthread_t sim_plugin_sched_thread;
+extern pthread_t sim_sched_thread;
+extern pthread_t sim_plugin_backfill_thread;
+extern pthread_t sim_thread_priority_multifactor;
+
+
+//utils
+int endswith(const char* withwhat, const char* what);
 
 #endif

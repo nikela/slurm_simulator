@@ -30,8 +30,9 @@ double m_sim_timeval_scale = 1.0;
 int64_t simulator_start_time=0;
 
 pthread_t sim_main_thread=0;
-int sim_plugin_sched_thread_isset=0;
-pthread_t sim_plugin_sched_thread=0;
+pthread_t sim_sched_thread=0;
+pthread_t sim_plugin_backfill_thread=0;
+pthread_t sim_thread_priority_multifactor=0;
 
 int64_t sim_constructor_start_time=0;
 
@@ -224,3 +225,17 @@ extern int sim_pthread_create (pthread_t *newthread,
 	return err;
 }*/
 
+
+int endswith(const char* withwhat, const char* what)
+{
+	if(withwhat==NULL && what==NULL)
+		return 1;
+	if(withwhat==NULL)
+		return 0;
+    int l1 = strlen(withwhat);
+    int l2 = strlen(what);
+    if (l1 > l2)
+        return 0;
+
+    return strcmp(withwhat, what + (l2 - l1)) == 0;
+}

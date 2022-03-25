@@ -2042,6 +2042,9 @@ static void _queue_reboot_msg(void)
 		schedule_node_save();
 	}
 }
+#ifdef SLURM_SIMULATOR
+extern pthread_t sim_main_thread;
+#endif
 
 /*
  * _slurmctld_background - process slurmctld background activities
@@ -2124,6 +2127,14 @@ static void *_slurmctld_background(void *no_data)
 	last_node_acct = now;
 	(void) pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	(void) pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+#ifdef SLURM_SIMULATOR
+	sim_sched_thread_cond_wait_till = (last_sched_time + sched_interval)*1000000;
+	if(pthread_self() == sim_main_thread) {
+		debug2("pthread_self() == sim_main_thread");
+	}
+#endif
+
 	debug3("_slurmctld_background pid = %u", getpid());
 
 	while (1) {
@@ -2133,6 +2144,7 @@ static void *_slurmctld_background(void *no_data)
 		     i++) {
 			usleep(100000);
 		}
+		debug3("_slurmctld_background cycle");
 
 		now = time(NULL);
 		START_TIMER;
@@ -2356,11 +2368,18 @@ static void *_slurmctld_background(void *no_data)
 		if (call_schedule) {
 			lock_slurmctld(job_write_lock2);
 			now = time(NULL);
+			debug3("Calling schedule from _slurmctld_background %ld %ld %ld",now,last_sched_time,now-last_sched_time);
 			last_sched_time = now;
 			bb_g_load_state(false);	/* May alter job nice/prio */
 			unlock_slurmctld(job_write_lock2);
+			debug3("Here");
 			schedule(full_queue);
 			set_job_elig_time();
+#ifdef SLURM_SIMULATOR
+			// can be called earlier but it will be caught by other means
+			// this time will be used to identify next time jump
+			//sim_sched_thread_cond_wait_till = (last_sched_time + sched_interval)*1000000;
+#endif
 		}
 
 		if (difftime(now, last_config_list_update_time) >=

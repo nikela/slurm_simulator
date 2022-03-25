@@ -775,6 +775,10 @@ static bool _all_partition_priorities_same(void)
 	return result;
 }
 
+#ifdef SLURM_SIMULATOR
+extern int sim_sched_requests;
+#endif
+
 /*
  * Queue requests of job scheduler
  */
@@ -788,6 +792,9 @@ extern void schedule(bool full_queue)
 	sched_full_queue |= full_queue;
 	slurm_cond_broadcast(&sched_cond);
 	sched_requests++;
+#ifdef SLURM_SIMULATOR
+	sim_sched_requests++;
+#endif
 	slurm_mutex_unlock(&sched_mutex);
 }
 

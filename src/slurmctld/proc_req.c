@@ -3801,6 +3801,7 @@ send_msg:
 
 		schedule_job_save();	/* Has own locks */
 		schedule_node_save();	/* Has own locks */
+		debug3("Calling queue_job_scheduler from submit_batch_job");
 		queue_job_scheduler();
 	}
 	xfree(err_msg);
