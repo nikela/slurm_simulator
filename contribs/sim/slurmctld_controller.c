@@ -7,6 +7,10 @@ extern int64_t sim_main_thread_sleep_till;
 extern int64_t sim_sched_thread_cond_wait_till;
 extern int64_t sim_plugin_backfill_thread_sleep_till;
 
+#include <pthread.h>
+int proc_rec_count=0;
+pthread_mutex_t proc_rec_count_lock;
+
 #define main slurmctld_main
 #include "../../src/slurmctld/controller.c"
 #undef main
@@ -22,6 +26,7 @@ extern int64_t sim_plugin_backfill_thread_sleep_till;
 #include <signal.h>
 
 pthread_t thread_id_event_thread;
+
 
 extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job);
 extern int sim_init_slurmd();
@@ -133,6 +138,7 @@ void *sim_events_thread(void *no_data)
 	int64_t now;
 	int64_t cur_real_utime, cur_sim_utime;
 	//int64_t slurmctld_diag_stats_lastcheck;
+	int64_t last_event_usec=0;
 
 	/* time reference */
 	sleep(1);
@@ -154,17 +160,23 @@ void *sim_events_thread(void *no_data)
 	info("sim: current real utime: %s, current sim utime: %s",
 			stmp1, stmp2);
 
+	int scaling_on=0;
 	/*init vars*/
 	while(1) {
 
 		now = get_sim_utime();
 		cur_real_utime = get_real_utime();
 		//start_time = now;
+		if(scaling_on==0 && cur_real_utime-process_create_time_real>10000000) {
+			set_sim_time_scale(slurm_sim_conf->clock_scaling);
+			scaling_on=1;
+		}
 
 		/* SIM Start */
 		if(sim_next_event->when - now < 0) {
 			while(sim_next_event->when - now < 0) {
 				event = sim_next_event;
+
 				pthread_mutex_lock(&events_mutex);
 				sim_next_event = sim_next_event->next;
 				pthread_mutex_unlock(&events_mutex);
@@ -186,6 +198,8 @@ void *sim_events_thread(void *no_data)
 				default:
 					break;
 				}
+				last_event_usec = get_sim_utime();
+
 			}
 			//
 			//jobs_submit_count++;
@@ -193,34 +207,37 @@ void *sim_events_thread(void *no_data)
 		/*check can we skip some time*/
 		int64_t skipping_to_utime = INT64_MAX;
 		int64_t skip_usec;
-		if(cur_real_utime-process_create_time_real>10000000 && all_done==0 &&
-				sim_main_thread_sleep_till > 0 &&
-				sim_sched_thread_cond_wait_till > 0 &&
-				sim_plugin_backfill_thread_sleep_till > 0 &&
-				sim_next_event->when > now) {
-			// sim_sched_thread_sleep_till > 0 &&
-			// mainthread kick sim_plugin_sched_thread_sleep_till
-
-
-			// main thread is slepping (run walllimit check) and backfiller is sleeping
-			//debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
-			//debug2("sim_plugin_sched_thread_sleep %ld", sim_sched_thread_sleep_till-get_sim_utime());
+		if(sim_main_thread_sleep_till > 0) {
 			skipping_to_utime = sim_main_thread_sleep_till;
 			skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
 			//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 			skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
 			skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
+			skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
+			skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 
 			now = get_sim_utime();
-			skip_usec = skipping_to_utime - now - 10000;
-			if( skip_usec > real_sleep_usec ) {
-				if(skip_usec > 50000) {
-					skip_usec = 50000;
-				}
-				if(skip_usec > 10000) {
-					//debug2("skipping %" PRId64 " usec", skip_usec);
-					set_sim_time(now + skip_usec);
-					//now = get_sim_utime();
+
+			if(((cur_real_utime-process_create_time_real)>10000000) && (all_done==0) && (proc_rec_count==0) &&
+					((now-last_event_usec) > 2000000)) {
+				// sim_sched_thread_sleep_till > 0 &&
+				// mainthread kick sim_plugin_sched_thread_sleep_till
+
+				// main thread is slepping (run walllimit check) and backfiller is sleeping
+				//debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
+				//debug2("sim_plugin_sched_thread_sleep %ld", sim_sched_thread_sleep_till-get_sim_utime());
+
+
+				skip_usec = skipping_to_utime - now - 10000;
+				if( skip_usec > real_sleep_usec ) {
+					if(skip_usec > 50000) {
+						skip_usec = 50000;
+					}
+					if(skip_usec > 10000) {
+						//debug2("skipping %" PRId64 " usec %.3f from last event", skip_usec,(now-last_event_usec)/1000000.0);
+						set_sim_time(now + skip_usec);
+						//now = get_sim_utime();
+					}
 				}
 			}
 		}

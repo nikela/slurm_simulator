@@ -29,11 +29,6 @@ double m_sim_timeval_scale = 1.0;
 
 int64_t simulator_start_time=0;
 
-pthread_t sim_main_thread=0;
-pthread_t sim_sched_thread=0;
-pthread_t sim_plugin_backfill_thread=0;
-pthread_t sim_thread_priority_multifactor=0;
-
 int64_t sim_constructor_start_time=0;
 
 
@@ -163,7 +158,7 @@ void __attribute__ ((constructor)) sim_init(void)
 		set_time_to_real = 0;
 	}
 
-	init_sim_time(slurm_sim_conf->time_start, slurm_sim_conf->clock_scaling,
+	init_sim_time(slurm_sim_conf->time_start, 1.0,
 			set_time, set_time_to_real);
 
 	simulator_start_time = process_create_time_sim;

@@ -428,7 +428,9 @@ int main(int argc, char **argv)
 	 * happen after we block signals so that thread doesn't catch any
 	 * signals.
 	 */
+#ifndef SLURM_SIMULATOR
 	slurmscriptd_init(argc, argv);
+#endif
 
 	accounting_enforce = slurm_conf.accounting_storage_enforce;
 	if (slurm_with_slurmdbd()) {
@@ -785,7 +787,9 @@ int main(int argc, char **argv)
 		 * call after registering so that the current cluster's
 		 * control_host and control_port will be filled in.
 		 */
+#ifndef SLURM_SIMULATOR
 		fed_mgr_init(acct_db_conn);
+#endif
 
 		_restore_job_dependencies();
 
@@ -1496,14 +1500,27 @@ static void *_service_connection(void *arg)
 		      msg->auth_uid, rpc_num2string(msg->msg_type));
 		slurm_send_rc_msg(msg, SLURMCTLD_COMMUNICATIONS_BACKOFF);
 	} else {
-		if (rpc_enqueue(msg)) {
-			server_thread_decr();
-			return NULL;
-		}
+        if (rpc_enqueue(msg)) {
+            server_thread_decr();
+            return NULL;
+        }
 
-		/* process the request */
-		slurmctld_req(msg);
-	}
+        /* process the request */
+#ifdef SLURM_SIMULATOR
+        slurm_mutex_lock(&proc_rec_count_lock);
+        proc_rec_count++;
+        slurm_mutex_unlock(&proc_rec_count_lock);
+#endif
+        slurmctld_req(msg);
+#ifdef SLURM_SIMULATOR
+        slurm_mutex_lock(&proc_rec_count_lock);
+        if (proc_rec_count > 0)
+            proc_rec_count--;
+        else
+            error("proc_rec_count underflow");
+        slurm_mutex_unlock(&proc_rec_count_lock);
+#endif
+    }
 
 	if ((msg->conn_fd >= 0) && (close(msg->conn_fd) < 0))
 		error("close(%d): %m", msg->conn_fd);
@@ -2144,7 +2161,7 @@ static void *_slurmctld_background(void *no_data)
 		     i++) {
 			usleep(100000);
 		}
-		debug3("_slurmctld_background cycle");
+		//debug3("_slurmctld_background cycle");
 
 		now = time(NULL);
 		START_TIMER;

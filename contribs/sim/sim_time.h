@@ -28,6 +28,7 @@ extern int64_t sim_main_thread_sleep_till;
 extern int64_t sim_sched_thread_cond_wait_till;
 extern int64_t sim_plugin_backfill_thread_sleep_till;
 extern int64_t sim_thread_priority_multifactor_sleep_till;
+extern int64_t sim_agent_init_sleep_till;
 
 extern void iso8601_from_utime(char **buf, uint64_t utime, bool msec);
 

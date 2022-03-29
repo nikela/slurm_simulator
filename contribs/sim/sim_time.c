@@ -90,7 +90,7 @@ void set_sim_time_and_scale(int64_t cur_sim_time, double scale)
 	*sim_timeval_shift = (int64_t)((1.0-*sim_timeval_scale)*cur_sim_time) -
 			(int64_t)(*sim_timeval_scale * (cur_real_utime - cur_sim_time));
 
-	//debug2("sim_timeval_shift %ld sim_timeval_scale %f\n\n", *sim_timeval_shift, *sim_timeval_scale);
+	debug2("sim_timeval_shift %ld sim_timeval_scale %f\n\n", *sim_timeval_shift, *sim_timeval_scale);
 }
 
 void set_sim_time_scale(double scale)
@@ -267,10 +267,7 @@ void iso8601_from_utime(char **buf, uint64_t utime, bool msec)
 		_xstrfmtcat(buf, "%s", p);
 }
 
-int64_t sim_main_thread_sleep_till = 0;
-int64_t sim_sched_thread_cond_wait_till = 0;
-int64_t sim_plugin_backfill_thread_sleep_till = 0;
-int64_t sim_thread_priority_multifactor_sleep_till = INT64_MAX;
+
 int sim_sleep (int64_t usec)
 {
 	int64_t dt = usec;
@@ -308,157 +305,6 @@ int sim_sleep (int64_t usec)
 	return 0;
 }
 
-void slurm_cond_timedwait1(pthread_cond_t *cond, pthread_mutex_t *mutex,
-		const struct timespec *abstime,
-		const char *filename,
-		const int line,
-		const char *func)
-{
-	int64_t abstime_sim = abstime->tv_sec * 1000000 + (abstime->tv_nsec/1000);
-	int64_t real_utime = get_real_utime();
-	int64_t sim_utime = get_sim_utime();
-	int64_t abstime_real = abstime_sim + (real_utime-sim_utime);
-	struct timespec abstime_real_ts;
-
-	int err;
-
-
-	abstime_real_ts.tv_sec = abstime_real/1000000;
-	abstime_real_ts.tv_nsec = (abstime_real%1000000)*1000;
-
-	err = pthread_cond_timedwait(cond, mutex, &abstime_real_ts);
-	if (err && (err != ETIMEDOUT)) {
-		errno = err;
-		error("%s:%d %s: pthread_cond_timedwait(): %m",
-				filename, line, func);
-	}
-}
-
-int sim_sched_requests=0;
-
-int slurm_cond_wait0 (pthread_cond_t * cond, pthread_mutex_t * mutex,
-		const char *filename,
-		const int line,
-		const char *func)
-{
-	int err;
-	int sim_sched_requests_old;
-	int64_t sim_utime = get_sim_utime();
-	if( pthread_self()==sim_sched_thread ) {
-		slurm_mutex_unlock(mutex);
-        sim_sched_requests_old=sim_sched_requests;
-		sim_sched_thread_cond_wait_till=sim_utime + 120000000;
-		while(sim_sched_requests==sim_sched_requests_old){
-			// keep it here or some weird optimization will happens
-			get_sim_utime();
-		}
-		sim_sched_requests = 0;
-		sim_sched_thread_cond_wait_till=0;
-		slurm_mutex_lock(mutex);
-		return 0;
-	} else {
-		do {
-			err = pthread_cond_wait(cond, mutex);
-			if (err) {
-				errno = err;
-				error("%s:%d %s: pthread_cond_wait(): %m",
-					__FILE__, __LINE__, __func__);
-			}
-		} while (0);
-		return err;
-	}
-}
-
-void slurm_cond_timedwait0(pthread_cond_t *cond,
-		pthread_mutex_t *mutex, const struct timespec *abstime,
-		const char *filename,
-		const int line,
-		const char *func)
-{
-	int nanosecondswait=1000;
-	int64_t abstime_sim = abstime->tv_sec * 1000000 + (abstime->tv_nsec/1000);
-	int64_t real_utime = get_real_utime();
-	int64_t sim_utime = get_sim_utime();
-	int64_t abstime_real = abstime_sim + (real_utime-sim_utime);
-	int64_t next_real_time;
-	struct timespec ts;
-	int err;
-	struct timespec abstime_real_ts;
-	int sim_sched_requests_old;
-
-	abstime_real_ts.tv_sec = abstime_real/1000000;
-	abstime_real_ts.tv_nsec = (abstime_real%1000000)*1000;
-
-	if( pthread_self()==sim_sched_thread ) {
-		// @TODO check that that is the case in newer versions
-		// back filler don't have case of cond triggering
-		// yes it does
-		//sim_sleep(abstime_sim-sim_utime);
-		//return;
-		slurm_mutex_unlock(mutex);
-		//sim_sched_thread_cond_wait_till = abstime_sim;
-		sim_sched_requests_old=sim_sched_requests;
-		while(sim_utime < abstime_sim && sim_sched_requests==sim_sched_requests_old){
-			sim_utime = get_sim_utime();
-		}
-		sim_sched_requests = 0;
-		//sim_sched_thread_cond_wait_till = 0;
-		slurm_mutex_lock(mutex);
-		return;
-	}
-	if( pthread_self()==sim_plugin_backfill_thread ) {
-		// @TODO check that that is the case in newer versions
-		// back filler don't have case of cond triggering
-		slurm_mutex_unlock(mutex);
-		sim_plugin_backfill_thread_sleep_till = abstime_sim;
-		while(sim_utime < abstime_sim){
-			sim_utime = get_sim_utime();
-		}
-		sim_plugin_backfill_thread_sleep_till = 0;
-		slurm_mutex_lock(mutex);
-		return;
-	}
-	if( pthread_self()==sim_thread_priority_multifactor ) {
-		// @TODO check that that is the case in newer versions
-		// back filler don't have case of cond triggering
-		slurm_mutex_unlock(mutex);
-		sim_thread_priority_multifactor_sleep_till = abstime_sim;
-		while(sim_utime < abstime_sim){
-			sim_utime = get_sim_utime();
-		}
-		sim_thread_priority_multifactor_sleep_till = 0;
-		slurm_mutex_lock(mutex);
-		return;
-	}
-	do {
-		clock_gettime(CLOCK_REALTIME, &ts);
-
-		ts.tv_nsec = ts.tv_nsec + nanosecondswait;
-
-		if(ts.tv_nsec >=  1000000000) {
-			ts.tv_sec += ts.tv_nsec / 1000000000;
-			ts.tv_nsec = ts.tv_nsec % 1000000000;
-		}
-
-		next_real_time = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
-
-		if(next_real_time < abstime_real) {
-			next_real_time = abstime_real;
-		}
-		err = pthread_cond_timedwait(cond, mutex, &abstime_real_ts);
-		if (err && (err != ETIMEDOUT)) {
-			errno = err;
-			error("%s:%d %s: pthread_cond_timedwait(): %m",
-					filename, line, func);
-			break;
-		}
-		if (err==0) {
-			// i.e. got signal
-			break;
-		}
-
-	} while (get_sim_utime() < abstime_sim);
-}
 
 unsigned int __wrap_sleep (unsigned int seconds)
 {

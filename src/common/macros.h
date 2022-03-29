@@ -99,7 +99,7 @@
 			abort();					\
 		}							\
 	} while (0)
-
+#ifndef SLURM_SIMULATOR
 #define slurm_cond_signal(cond)					\
 	do {								\
 		int err = pthread_cond_signal(cond);			\
@@ -119,7 +119,7 @@
 				__FILE__, __LINE__, __func__);		\
 		}							\
 	} while (0)
-#ifndef SLURM_SIMULATOR
+
 #define slurm_cond_wait(cond, mutex)					\
 	do {								\
 		int err = pthread_cond_wait(cond, mutex);		\
@@ -142,18 +142,37 @@
 		}							\
 	} while (0)
 #else
-extern int slurm_cond_wait0 (pthread_cond_t * __cond, pthread_mutex_t * __mutex,
+
+extern int slurm_cond_signal0 (pthread_cond_t * __cond,
+		const char *scond,
 		const char *filename,
 		const int line,
 		const char *func);
 
-#define slurm_cond_wait(cond, mutex) slurm_cond_wait0(cond, mutex, __FILE__, __LINE__, __func__)
+#define slurm_cond_signal(cond) slurm_cond_signal0(cond, #cond, __FILE__, __LINE__, __func__)
+
+extern int slurm_cond_broadcast0 (pthread_cond_t * __cond,
+		const char *scond,
+		const char *filename,
+		const int line,
+		const char *func);
+
+#define slurm_cond_broadcast(cond) slurm_cond_broadcast0(cond, #cond, __FILE__, __LINE__, __func__)
+
+extern int slurm_cond_wait0 (pthread_cond_t * __cond, pthread_mutex_t * __mutex,
+		const char *scond,
+		const char *filename,
+		const int line,
+		const char *func);
+
+#define slurm_cond_wait(cond, mutex) slurm_cond_wait0(cond, mutex, #cond, __FILE__, __LINE__, __func__)
 
 extern void slurm_cond_timedwait0(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime,
+		const char *scond,
 		const char *filename,
 		const int line,
 		const char *func);
-#define slurm_cond_timedwait(cond, mutex, abstime) slurm_cond_timedwait0(cond, mutex, abstime, __FILE__, __LINE__, __func__)
+#define slurm_cond_timedwait(cond, mutex, abstime) slurm_cond_timedwait0(cond, mutex, abstime, #cond, __FILE__, __LINE__, __func__)
 #endif
 
 #define slurm_cond_destroy(cond)					\
@@ -333,8 +352,9 @@ extern int sim_pthread_create (pthread_t *newthread,
 		void *(*start_routine) (void *),
 		void *arg,
 		const char *id,
-		const char *sarg,
 		const char *func,
+		const char *sarg,
+		const char *funccall,
 		const char *filename,
 		const char *note,
 		const int line);
@@ -343,7 +363,7 @@ extern int sim_pthread_create (pthread_t *newthread,
 		pthread_attr_t attr;					\
 		int err;						\
 		slurm_attr_init(&attr);					\
-		err = sim_pthread_create(id, &attr, func, arg, #id, #arg, #func,__FILE__,"",__LINE__);		\
+		err = sim_pthread_create(id, &attr, func, arg, #id, #func, #arg,__func__,__FILE__,"",__LINE__);		\
 		if (err) {						\
 			errno = err;					\
 			fatal("%s: pthread_create error %m", __func__);	\
@@ -391,7 +411,7 @@ extern int sim_pthread_create (pthread_t *newthread,
 			fatal("%s: pthread_attr_setdetachstate %m",	\
 			      __func__);				\
 		} 						\
-		err = sim_pthread_create(&id_local, &attr, func, arg, "id_local", #arg, #func, __FILE__,"detached",__LINE__);		\
+		err = sim_pthread_create(&id_local, &attr, func, arg, "id_local", #arg, #func, __func__,__FILE__,"detached",__LINE__);		\
 		if (err) {						\
 			errno = err;					\
 			fatal("%s: pthread_create error %m", __func__);	\
