@@ -6,6 +6,7 @@
 extern int64_t sim_main_thread_sleep_till;
 extern int64_t sim_sched_thread_cond_wait_till;
 extern int64_t sim_plugin_backfill_thread_sleep_till;
+int64_t last_sched_time_slurmctld_background;
 
 #include <pthread.h>
 int proc_rec_count=0;
@@ -20,6 +21,7 @@ pthread_mutex_t proc_rec_count_lock;
 #include "../../contribs/sim/sim_events.h"
 #include "../../contribs/sim/sim_users.h"
 #include "../../contribs/sim/sim_jobs.h"
+#include "../../contribs/sim/sim_rt_events.h"
 #include "../../contribs/sim/sim.h"
 
 #include <inttypes.h>
@@ -126,6 +128,60 @@ void sim_complete_job(uint32_t job_id)
 	sim_insert_event_epilog_complete(job_id);
 }
 
+// 0 means such event currently do not occur
+// 1 means expecting such event in feture
+// >10 usec time when event started
+
+int64_t rt_events[MAX_RT_EVENT_TYPES];
+
+// time to wait after event is done
+int64_t rt_events_post_wait[MAX_RT_EVENT_TYPES];
+
+
+int _event_expect(slurm_sim_rt_event_t event_type, const char *s_event_type, const char *func, const char *filename, const int line)
+{
+    //int64_t now=get_sim_utime();
+    rt_events[event_type]=1;
+	return 0;
+}
+
+
+int _event_started(slurm_sim_rt_event_t event_type, const char *s_event_type, const char *func, const char *filename, const int line)
+{
+    int64_t now=get_sim_utime();
+    rt_events[event_type]=now;
+
+    switch(event_type) {
+	  case SUBMIT_JOB_SSIM_RT_EVENT:
+		  event_expect(SCHED_SSIM_RT_EVENT);
+		  break;
+	  case EPILOG_COMPLETE_SSIM_RT_EVENT:
+		  event_expect(SCHED_SSIM_RT_EVENT);
+		  break;
+	  default:
+		  break;
+    }
+	return 0;
+}
+
+int _event_ended(slurm_sim_rt_event_t event_type, const char *s_event_type, const char *func, const char *filename, const int line)
+{
+	int64_t now=get_sim_utime();
+	rt_events[event_type]=0;
+
+    switch(event_type) {
+	  case SUBMIT_JOB_SSIM_RT_EVENT:
+		  rt_events_post_wait[event_type]=now+1000000;
+		  break;
+	  case EPILOG_COMPLETE_SSIM_RT_EVENT:
+		  rt_events_post_wait[event_type]=now+1000000;
+	  	  break;
+	  default:
+	  		  break;
+    }
+	return 0;
+}
+
 void *sim_events_thread(void *no_data)
 {
 	//time_t start_time;
@@ -138,7 +194,7 @@ void *sim_events_thread(void *no_data)
 	int64_t now;
 	int64_t cur_real_utime, cur_sim_utime;
 	//int64_t slurmctld_diag_stats_lastcheck;
-	int64_t last_event_usec=0;
+	//int64_t last_event_usec=0;
 
 	/* time reference */
 	sleep(1);
@@ -185,20 +241,28 @@ void *sim_events_thread(void *no_data)
 
 				switch(event->type) {
 				case SIM_NODE_REGISTRATION:
+					event_started(GENERAL_SSIM_RT_EVENT);
 					sim_registration_engine();
+					event_ended(GENERAL_SSIM_RT_EVENT);
 					break;
 				case SIM_SUBMIT_BATCH_JOB:
+					event_started(SUBMIT_JOB_SSIM_RT_EVENT);
 					submit_job((sim_event_submit_batch_job_t*)event->payload);
+					event_ended(SUBMIT_JOB_SSIM_RT_EVENT);
 					break;
 				case SIM_COMPLETE_BATCH_SCRIPT:
+					event_started(GENERAL_SSIM_RT_EVENT);
 					sim_complete_job(((sim_job_t*)event->payload)->job_id);
+					event_ended(GENERAL_SSIM_RT_EVENT);
 					break;
 				case SIM_EPILOG_COMPLETE:
+					event_started(EPILOG_COMPLETE_SSIM_RT_EVENT);
 					sim_epilog_complete(((sim_job_t*)event->payload)->job_id);
+					event_ended(EPILOG_COMPLETE_SSIM_RT_EVENT);
 				default:
 					break;
 				}
-				last_event_usec = get_sim_utime();
+				//last_event_usec = get_sim_utime();
 
 			}
 			//
@@ -215,11 +279,20 @@ void *sim_events_thread(void *no_data)
 			skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
 			skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
 			skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
+			if(job_sched_cnt>0) {
+				skipping_to_utime = MIN(skipping_to_utime, last_sched_time_slurmctld_background+batch_sched_delay*1000000);
+			}
 
 			now = get_sim_utime();
 
-			if(((cur_real_utime-process_create_time_real)>10000000) && (all_done==0) && (proc_rec_count==0) &&
-					((now-last_event_usec) > 2000000)) {
+
+
+			if(((cur_real_utime-process_create_time_real)>10000000) && (all_done==0) && (proc_rec_count==0)) {
+				//&&
+				//	((now-last_event_usec) > 1000000)
+				// sim_main_thread_sleep_till > 0 i.e. in sleep within slurmctrld_backgroung
+				//     job_sched_cnt can not be reset to 0 and call schedule right now
+
 				// sim_sched_thread_sleep_till > 0 &&
 				// mainthread kick sim_plugin_sched_thread_sleep_till
 
@@ -235,8 +308,8 @@ void *sim_events_thread(void *no_data)
 					}
 					if(skip_usec > 10000) {
 						//debug2("skipping %" PRId64 " usec %.3f from last event", skip_usec,(now-last_event_usec)/1000000.0);
-						set_sim_time(now + skip_usec);
-						//now = get_sim_utime();
+						//set_sim_time(now + skip_usec);
+						now = get_sim_utime();
 					}
 				}
 			}
@@ -325,6 +398,11 @@ main (int argc, char **argv)
 	//simulator_start_time += (sim_slurmctld_main_start_time2 - sim_constructor_start_time);
 	info("sim_slurmctld_main_start_time2: %" PRId64, sim_slurmctld_main_start_time2);
 	info("simulator_start_time(corrected): %" PRId64, simulator_start_time);
+
+	for(int i=0;i<MAX_RT_EVENT_TYPES;i++) {
+		rt_events[i]=0;
+		rt_events_post_wait[i]=0;
+	}
 	slurmctld_main(slurmctld_argc, slurmctld_argv);
 
 	debug("%d", controller_sigarray[0]);

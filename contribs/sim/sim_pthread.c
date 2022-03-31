@@ -153,6 +153,7 @@ int slurm_cond_broadcast0 (pthread_cond_t * cond,
 
 	if (xstrcmp("&sched_cond", scond) == 0 && xstrcmp("schedule", func) == 0) {
 		sim_sched_requests++;
+		sim_sched_thread_cond_wait_till=0;//i.e. sched should start any time now
 	}
 
 
@@ -242,6 +243,8 @@ void slurm_cond_timedwait0(pthread_cond_t *cond,
 	int64_t sim_utime = get_sim_utime();
 	int64_t abstime_real = abstime_sim + (real_utime-sim_utime);
 	int64_t next_real_time;
+	int64_t wait = abstime_sim - sim_utime;
+	int64_t shortwait = wait > 0 && wait < 2000000;
 	struct timespec ts;
 	int err;
 	struct timespec abstime_real_ts;
@@ -271,6 +274,10 @@ void slurm_cond_timedwait0(pthread_cond_t *cond,
 		// back filler don't have case of cond triggering
 		slurm_mutex_unlock(mutex);
 		sim_plugin_backfill_thread_sleep_till = abstime_sim;
+		if(!shortwait) {
+			// let it work real time for a second before backfill attempt
+			sim_plugin_backfill_thread_sleep_till = abstime_sim;//-1000000;
+		}
 		while(sim_utime < abstime_sim){
 			sim_utime = get_sim_utime();
 		}

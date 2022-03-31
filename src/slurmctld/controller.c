@@ -2396,6 +2396,7 @@ static void *_slurmctld_background(void *no_data)
 			// can be called earlier but it will be caught by other means
 			// this time will be used to identify next time jump
 			//sim_sched_thread_cond_wait_till = (last_sched_time + sched_interval)*1000000;
+			last_sched_time_slurmctld_background = last_sched_time;
 #endif
 		}
 

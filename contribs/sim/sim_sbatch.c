@@ -18,9 +18,10 @@
 #include "../../contribs/sim/sim_time.h"
 #include "../../contribs/sim/sim_conf.h"
 #include "../../contribs/sim/sim_events.h"
+#include "../../contribs/sim/sim_rt_events.h"
 #include "../../contribs/sim/sim_jobs.h"
 #include "../../contribs/sim/sim.h"
-
+#include "../../src/slurmctld/proc_req.h"
 //extern int wrap_slurm_submit_batch_job(job_desc_msg_t *req,
 //				  submit_response_msg_t **resp) {
 //	return 0;
@@ -246,8 +247,35 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 		static char *msg;
 		if (job_req_list)
 			rc = slurm_submit_batch_het_job(job_req_list, &resp);
-		else
+		else {
+			//rc = slurm_submit_batch_job(desc, &resp);
+
+//			slurm_msg_t req_msg;
+//			slurm_msg_t resp_msg;
+//
+//			slurm_msg_t_init(&req_msg);
+//			slurm_msg_t_init(&resp_msg);
+//
+//			/*
+//			 * set Node and session id for this request
+//			 */
+//			if (desc->alloc_sid == NO_VAL)
+//				desc->alloc_sid = getsid(0);
+//
+//			req_msg.msg_type = REQUEST_SUBMIT_BATCH_JOB;
+//			req_msg.data     = desc;
+//			req_msg.conn     = NULL;
+//			//if (req_msg.flags & SLURM_GLOBAL_AUTH_KEY) {
+//			//	auth_cred = auth_g_create(req_msg.auth_index, _global_auth_key());
+//			//} else {
+//			req_msg.auth_cred = auth_g_create(req_msg.auth_index, slurm_conf.authinfo);
+//			auth_g_verify(req_msg.auth_cred, slurm_conf.authinfo);
+//			//}
+//			req_msg.auth_uid = auth_g_get_uid(req_msg.auth_cred);
+//			req_msg.auth_uid_set = true;
+//			slurmctld_req(&req_msg);
 			rc = slurm_submit_batch_job(desc, &resp);
+		}
 		if (rc >= 0)
 			break;
 		if (errno == ESLURM_ERROR_ON_DESC_TO_RECORD_COPY) {

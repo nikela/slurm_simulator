@@ -90,7 +90,7 @@ void set_sim_time_and_scale(int64_t cur_sim_time, double scale)
 	*sim_timeval_shift = (int64_t)((1.0-*sim_timeval_scale)*cur_sim_time) -
 			(int64_t)(*sim_timeval_scale * (cur_real_utime - cur_sim_time));
 
-	debug2("sim_timeval_shift %ld sim_timeval_scale %f\n\n", *sim_timeval_shift, *sim_timeval_scale);
+	//debug2("sim_timeval_shift %ld sim_timeval_scale %f\n\n", *sim_timeval_shift, *sim_timeval_scale);
 }
 
 void set_sim_time_scale(double scale)
