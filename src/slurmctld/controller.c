@@ -2091,7 +2091,6 @@ static void *_slurmctld_background(void *no_data)
 	static time_t last_uid_update;
 	time_t now;
 	int no_resp_msg_interval, ping_interval, purge_job_interval;
-	int i;
 	DEF_TIMERS;
 
 	/* Locks: Read config */
@@ -2158,6 +2157,7 @@ static void *_slurmctld_background(void *no_data)
 		bool call_schedule = false, full_queue = false;
 
 #ifndef SLURM_SIMULATOR
+		int i;
 		for (i = 0; ((i < 10) && (slurmctld_config.shutdown_time == 0));
 		     i++) {
 			usleep(100000);
