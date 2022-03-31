@@ -116,7 +116,7 @@ int slurm_cond_signal0 (pthread_cond_t * cond,
 		const int line,
 		const char *func)
 {
-	debug3("slurm_cond_signal0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
+	//debug3("slurm_cond_signal0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
 	if (xstrcmp("schedule", func) == 0 && xstrcmp("&sched_cond", scond) == 0) {
 		sim_sched_requests++;
 	}
@@ -149,7 +149,7 @@ int slurm_cond_broadcast0 (pthread_cond_t * cond,
 		return 0;
 	}
 
-	debug3("slurm_cond_broadcast0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
+	//debug3("slurm_cond_broadcast0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
 
 	if (xstrcmp("&sched_cond", scond) == 0 && xstrcmp("schedule", func) == 0) {
 		sim_sched_requests++;
@@ -203,7 +203,7 @@ int slurm_cond_wait0 (pthread_cond_t * cond, pthread_mutex_t * mutex,
 {
 	int err;
 	int sim_sched_requests_old;
-	debug3("slurm_cond_wait0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
+	//debug3("slurm_cond_wait0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
 	int64_t sim_utime = get_sim_utime();
 	if( pthread_self()==sim_sched_thread ) {
 		slurm_mutex_unlock(mutex);
@@ -249,7 +249,7 @@ void slurm_cond_timedwait0(pthread_cond_t *cond,
 	int err;
 	struct timespec abstime_real_ts;
 	int sim_cond_count_old;
-	debug3("slurm_cond_timedwait0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
+	//debug3("slurm_cond_timedwait0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
 
 	abstime_real_ts.tv_sec = abstime_real/1000000;
 	abstime_real_ts.tv_nsec = (abstime_real%1000000)*1000;

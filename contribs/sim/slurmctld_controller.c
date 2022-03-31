@@ -308,8 +308,8 @@ void *sim_events_thread(void *no_data)
 					}
 					if(skip_usec > 10000) {
 						//debug2("skipping %" PRId64 " usec %.3f from last event", skip_usec,(now-last_event_usec)/1000000.0);
-						//set_sim_time(now + skip_usec);
-						now = get_sim_utime();
+						set_sim_time(now + skip_usec);
+						//now = get_sim_utime();
 					}
 				}
 			}
