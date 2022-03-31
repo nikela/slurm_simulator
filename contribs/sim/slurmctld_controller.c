@@ -303,8 +303,8 @@ void *sim_events_thread(void *no_data)
 
 				skip_usec = skipping_to_utime - now - 10000;
 				if( skip_usec > real_sleep_usec ) {
-					if(skip_usec > 50000) {
-						skip_usec = 50000;
+					if(skip_usec > 500000) {
+						skip_usec = 500000;
 					}
 					if(skip_usec > 10000) {
 						//debug2("skipping %" PRId64 " usec %.3f from last event", skip_usec,(now-last_event_usec)/1000000.0);

@@ -2157,10 +2157,14 @@ static void *_slurmctld_background(void *no_data)
 	while (1) {
 		bool call_schedule = false, full_queue = false;
 
+#ifndef SLURM_SIMULATOR
 		for (i = 0; ((i < 10) && (slurmctld_config.shutdown_time == 0));
 		     i++) {
 			usleep(100000);
 		}
+#else
+		usleep(1000000);
+#endif
 		//debug3("_slurmctld_background cycle");
 
 		now = time(NULL);
