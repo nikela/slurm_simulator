@@ -77,6 +77,12 @@ void sim_complete_job(uint32_t job_id)
 	//char *hostname;
 	job_record_t *job_ptr = find_job_record(job_id);
 
+	if(job_ptr==NULL){
+		error("Can not find record for %d job!", job_id);
+		sim_remove_active_sim_job(job_id);
+		return;
+	}
+
 	slurm_step_id_t step_id = { .job_id = job_ptr->job_id,
 						    .step_id = SLURM_BATCH_SCRIPT,
 						    .step_het_comp = NO_VAL };
@@ -91,11 +97,7 @@ void sim_complete_job(uint32_t job_id)
 		delete_step_record(job_ptr, step_ptr);
 	}
 
-	if(job_ptr==NULL){
-		error("Can not find record for %d job!", job_id);
-		sim_remove_active_sim_job(job_id);
-		return;
-	}
+
 	debug2("Processing RPC: REQUEST_COMPLETE_BATCH_SCRIPT from "
 		"uid=%u JobId=%u",
 		job_ptr->user_id, job_id);

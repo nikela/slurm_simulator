@@ -19,13 +19,16 @@ void sim_epilog_complete(uint32_t job_id)
 	bool defer_sched = (xstrcasestr(slurm_conf.sched_params, "defer"));
 
 	job_record_t *job_ptr = find_job_record(job_id);
-	slurmctld_lock_t job_write_lock = {
-			NO_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, READ_LOCK };
+
 	if(job_ptr==NULL){
 		error("Can not find record for %d job!", job_id);
 		sim_remove_active_sim_job(job_id);
 		return;
 	}
+
+
+	slurmctld_lock_t job_write_lock = {
+			NO_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, READ_LOCK };
 
 	if(IS_JOB_COMPLETING(job_ptr)){
 		lock_slurmctld(job_write_lock);
