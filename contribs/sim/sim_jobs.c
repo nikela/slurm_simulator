@@ -98,8 +98,6 @@ extern sim_job_t * sim_insert_sim_active_job(sim_event_submit_batch_job_t* event
 
 	sim_insert_active_job(active_job);
 
-	sim_print_active_jobs();
-
 	return active_job;
 }
 
