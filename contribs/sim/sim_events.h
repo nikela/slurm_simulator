@@ -15,7 +15,7 @@ typedef enum {
 } sim_event_type_t;
 
 typedef struct sim_event_submit_batch_job {
-	int wall_utime; /*actual walltime*/
+	int64_t wall_utime; /*actual walltime*/
 	uint32_t job_id;	/* job ID */
 	uint32_t job_sim_id;
 	char **argv;

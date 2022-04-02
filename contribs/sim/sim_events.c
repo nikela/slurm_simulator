@@ -76,7 +76,7 @@ extern void sim_print_event(sim_event_t * event)
 			xstrcat(str, payload->argv[i]);
 			xstrcat(str, " ");
 		}
-		info("%" PRId64 "\tSIM_SUBMIT_BATCH_JOB --jid %d --sim-walltime %d %s",
+		info("%" PRId64 "\tSIM_SUBMIT_BATCH_JOB --jid %d --sim-walltime %" PRId64 " %s",
 				event->when, payload->job_id, payload->wall_utime, str);
 		str[0]='\0';
 		break;
@@ -300,7 +300,7 @@ void* sim_submit_batch_job_get_payload(char *event_details)
 
 	if(payload->wall_utime < 0) {
 		// i.e. run till wall_utime limit
-		payload->wall_utime = INT32_MAX;
+		payload->wall_utime = INT64_MAX;
 	}
 
 	xfree(argv[0]);
