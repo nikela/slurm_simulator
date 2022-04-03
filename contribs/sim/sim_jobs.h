@@ -9,7 +9,7 @@
 /* sim_job contain information needed during job being in queue or running */
 typedef struct sim_job sim_job_t;
 typedef struct sim_job {
-	int walltime; /*job duration, INT32_MAX or any large value would results in job running till time limit*/
+	int64_t walltime; /*job duration, INT64_MAX or any large value would results in job running till time limit, usec*/
 	uint32_t job_id;	/* job ID */
 	uint32_t job_sim_id;	/* job sim ID */
 	int64_t submit_time; /* submit_time in usec*/

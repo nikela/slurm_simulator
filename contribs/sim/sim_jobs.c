@@ -83,7 +83,7 @@ extern void sim_print_active_jobs()
 	info("Simulation Active Jobs:");
 	sim_job_t * next_sim_job=sim_first_active_job;
 	while(next_sim_job != NULL) {
-		info("job_sim_id %d --jid %d --sim-walltime %d", next_sim_job->job_sim_id, next_sim_job->job_id, next_sim_job->walltime);
+		info("job_sim_id %d --jid %d --sim-walltime %" PRId64, next_sim_job->job_sim_id, next_sim_job->job_id, next_sim_job->walltime);
 		next_sim_job = next_sim_job->next_sim_job;
 	}
 }

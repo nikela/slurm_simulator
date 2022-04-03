@@ -134,7 +134,7 @@ int64_t get_process_create_time() {
 	int field_begin;
 	int stat_fd;
 
-	const int stat_buf_size = 8192;
+	const int stat_buf_size = 819200;
 	char *stat_buf = xcalloc(stat_buf_size,1);
 
 	long jiffies_per_second;
