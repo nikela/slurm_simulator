@@ -428,13 +428,14 @@ void sim_insert_event_comp_job(uint32_t job_id)
 		return;
 	}
 	int64_t when;
+	const int64_t year=365*24*3600*1000000;
 	if(sim_job->start_time == 0){
 		pthread_mutex_lock(&active_job_mutex);
 		sim_job->start_time = get_sim_utime();
 		pthread_mutex_unlock(&active_job_mutex);
 	}
 
-	if(sim_job->walltime != INT32_MAX){
+	if(sim_job->walltime < year && sim_job->walltime > 0){
 		when = sim_job->start_time + sim_job->walltime;
 		//when += slurm_sim_conf->comp_job_delay;
 		sim_insert_event(when, SIM_COMPLETE_BATCH_SCRIPT, (void*)sim_job);
