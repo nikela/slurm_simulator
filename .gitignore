@@ -74,3 +74,11 @@ autom4te.cache
 /testsuite/python/pytest.ini
 TAGS
 tags
+# local build
+/build/
+# IDE
+/.cproject
+/.project
+/.idea
+/.settings
+
