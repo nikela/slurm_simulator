@@ -666,6 +666,8 @@ LIBCURL
 LIBCURL_CPPFLAGS
 _libcurl_config
 UTIL_LIBS
+ENABLE_SIMULATOR_FALSE
+ENABLE_SIMULATOR_TRUE
 WITH_MUNGE_FALSE
 WITH_MUNGE_TRUE
 MUNGE_DIR
@@ -1072,6 +1074,7 @@ with_readline
 with_systemdsystemunitdir
 with_munge
 enable_multiple_slurmd
+enable_simulator
 with_libcurl
 enable_deprecated
 '
@@ -1775,6 +1778,7 @@ Optional Features:
   --disable-slurmrestd    disable slurmrestd support
   --enable-multiple-slurmd
                           enable multiple-slurmd support
+  --enable-simulator      build slurm in simulator mode
   --enable-deprecated     enable deprecated
 
 Optional Packages:
@@ -27578,6 +27582,45 @@ else
 printf "%s\n" "no" >&6; }
 fi
 
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether or not simulator mode is enabled" >&5
+printf %s "checking whether or not simulator mode is enabled... " >&6; }
+  # Check whether --enable-simulator was given.
+if test ${enable_simulator+y}
+then :
+  enableval=$enable_simulator;  case "$enableval" in
+        yes) x_ac_simulator=yes ;;
+         no) x_ac_simulator=no ;;
+          *) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: doh!" >&5
+printf "%s\n" "doh!" >&6; }
+             as_fn_error $? "bad value \"$enableval\" for --enable-simulator" "$LINENO" 5 ;;
+      esac
+
+
+fi
+
+  if test "$x_ac_simulator" = yes; then
+    test "$GCC" = yes && CFLAGS="$CFLAGS -DSLURM_SIMULATOR"
+    test "$GXX" = yes && CXXFLAGS="$CXXFLAGS -DSLURM_SIMULATOR"
+    LIBS="$LIBS -lrt -lm"
+
+printf "%s\n" "#define SLURM_SIMULATOR 1" >>confdefs.h
+
+  fi
+   if test "$x_ac_simulator" = "yes"; then
+  ENABLE_SIMULATOR_TRUE=
+  ENABLE_SIMULATOR_FALSE='#'
+else
+  ENABLE_SIMULATOR_TRUE='#'
+  ENABLE_SIMULATOR_FALSE=
+fi
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: ${x_ac_simulator=no}" >&5
+printf "%s\n" "${x_ac_simulator=no}" >&6; }
+
+
+
+
 savedLIBS="$LIBS"
 LIBS="-lutil $LIBS"
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for openpty in -lutil" >&5
@@ -28409,6 +28452,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${WITH_MUNGE_TRUE}" && test -z "${WITH_MUNGE_FALSE}"; then
   as_fn_error $? "conditional \"WITH_MUNGE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_SIMULATOR_TRUE}" && test -z "${ENABLE_SIMULATOR_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_SIMULATOR\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${WITH_CURL_TRUE}" && test -z "${WITH_CURL_FALSE}"; then
