@@ -341,7 +341,7 @@ extern int sim_pthread_create (pthread_t *newthread,
  * so this macro intentionally prevents you from capturing it.
  */
 #ifndef SLURM_SIMULATOR
-#define slurm_thread_create_detached(id, func, arg)			\
+#define slurm_thread_create_detached(func, arg)				\
 	do {								\
 		pthread_t id_local;					\
 		pthread_attr_t attr;					\
@@ -362,7 +362,7 @@ extern int sim_pthread_create (pthread_t *newthread,
 		slurm_attr_destroy(&attr);				\
 	} while (0)
 #else
-#define slurm_thread_create_detached(id, func, arg)			\
+#define slurm_thread_create_detached(func, arg)				\
 	do {								\
 		pthread_t id_local;					\
 		pthread_attr_t attr;					\
@@ -375,7 +375,7 @@ extern int sim_pthread_create (pthread_t *newthread,
 			fatal("%s: pthread_attr_setdetachstate %m",	\
 			      __func__);				\
 		}							\
-		err = sim_pthread_create(id_ptr, &attr, func, arg, #id, #func, __FILE__,"detached");	\
+        err = sim_pthread_create(&id_local, &attr, func, arg, "id_local", #func, __FILE__,"detached");	\
 		if (err) {						\
 			errno = err;					\
 			fatal("%s: pthread_create error %m", __func__);	\
