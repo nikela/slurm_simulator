@@ -55,7 +55,7 @@ extern void submit_job_old(sim_event_submit_batch_job_t* event_submit_batch_job)
 	char **het_job_argv;
 	bool more_het_comps = false;
 	info("AAAAAAAAAA3");
-	het_job_argc = sbatch_argc - sbopt.script_argc;
+	het_job_argc = sbatch_argc - opt.argc;
 	het_job_argv = sbatch_argv;
 	info("AAAAAAAAAA4");
 	char *script_body="#!/bin/bash\nsleep 30\n";
@@ -172,7 +172,7 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 		return;
 	}
 
-	het_job_argc = argc - sbopt.script_argc;
+	het_job_argc = argc - opt.argc;
 	het_job_argv = argv;
 	for (het_job_inx = 0; !het_job_fini; het_job_inx++) {
 		bool more_het_comps = false;
@@ -204,8 +204,8 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 				error("Invalid --bbf specification");
 				exit(error_exit);
 			}
-			_add_bb_to_script(&script_body, get_buf_data(buf));
-			free_buf(buf);
+            run_command_add_to_script(&script_body, get_buf_data(buf));
+            FREE_NULL_BUFFER(buf);
 		}
 
 		if (spank_init_post_opt() < 0) {

@@ -66,7 +66,7 @@ int read_sim_conf(void) {
 		debug("SIM: Reading sim.conf file %s", conf_path);
 
 		tbl = s_p_hashtbl_create(options);
-		if (s_p_parse_file(tbl, NULL, conf_path, false) == SLURM_ERROR) {
+		if (s_p_parse_file(tbl, NULL, conf_path, false,NULL) == SLURM_ERROR) {
 			fatal("SIM: Could not open/read/parse sim.conf file %s", conf_path);
 		}
 
