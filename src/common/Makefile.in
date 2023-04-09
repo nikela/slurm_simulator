@@ -93,7 +93,13 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 noinst_PROGRAMS = libcommon.o$(EXEEXT)
-@ENABLE_SIMULATOR_TRUE@am__append_1 = ../../contribs/sim/sim_pthread.c
+@ENABLE_SIMULATOR_TRUE@am__append_1 = \
+@ENABLE_SIMULATOR_TRUE@	../../contribs/sim/sim_init.c	\
+@ENABLE_SIMULATOR_TRUE@    ../../contribs/sim/sim_conf.c	\
+@ENABLE_SIMULATOR_TRUE@    ../../contribs/sim/sim_time.c	\
+@ENABLE_SIMULATOR_TRUE@	../../contribs/sim/sim_users.c	\
+@ENABLE_SIMULATOR_TRUE@	../../contribs/sim/sim_pthread.c
+
 subdir = src/common
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/auxdir/ax_check_compile_flag.m4 \
@@ -160,7 +166,8 @@ PROGRAMS = $(noinst_PROGRAMS)
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 libcommon_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
-@ENABLE_SIMULATOR_TRUE@am__objects_1 = sim_pthread.lo
+@ENABLE_SIMULATOR_TRUE@am__objects_1 = sim_init.lo sim_conf.lo \
+@ENABLE_SIMULATOR_TRUE@	sim_time.lo sim_users.lo sim_pthread.lo
 am_libcommon_la_OBJECTS = assoc_mgr.lo bitstring.lo callerid.lo \
 	cbuf.lo conmgr.lo cpu_frequency.lo cron.lo daemonize.lo \
 	data.lo eio.lo env.lo fd.lo fetch_config.lo forward.lo \
@@ -229,7 +236,9 @@ am__depfiles_remade = ./$(DEPDIR)/assoc_mgr.Plo \
 	./$(DEPDIR)/proc_args.Plo ./$(DEPDIR)/read_config.Plo \
 	./$(DEPDIR)/reverse_tree.Plo ./$(DEPDIR)/run_command.Plo \
 	./$(DEPDIR)/run_in_daemon.Plo ./$(DEPDIR)/setproctitle.Plo \
-	./$(DEPDIR)/sim_pthread.Plo ./$(DEPDIR)/slurm_errno.Plo \
+	./$(DEPDIR)/sim_conf.Plo ./$(DEPDIR)/sim_init.Plo \
+	./$(DEPDIR)/sim_pthread.Plo ./$(DEPDIR)/sim_time.Plo \
+	./$(DEPDIR)/sim_users.Plo ./$(DEPDIR)/slurm_errno.Plo \
 	./$(DEPDIR)/slurm_opt.Plo ./$(DEPDIR)/slurm_persist_conn.Plo \
 	./$(DEPDIR)/slurm_protocol_api.Plo \
 	./$(DEPDIR)/slurm_protocol_defs.Plo \
@@ -713,7 +722,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/run_command.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/run_in_daemon.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/setproctitle.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_conf.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_init.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_pthread.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_time.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_users.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurm_errno.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurm_opt.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurm_persist_conn.Plo@am__quote@ # am--include-marker
@@ -779,6 +792,34 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+sim_init.lo: ../../contribs/sim/sim_init.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sim_init.lo -MD -MP -MF $(DEPDIR)/sim_init.Tpo -c -o sim_init.lo `test -f '../../contribs/sim/sim_init.c' || echo '$(srcdir)/'`../../contribs/sim/sim_init.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sim_init.Tpo $(DEPDIR)/sim_init.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../contribs/sim/sim_init.c' object='sim_init.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sim_init.lo `test -f '../../contribs/sim/sim_init.c' || echo '$(srcdir)/'`../../contribs/sim/sim_init.c
+
+sim_conf.lo: ../../contribs/sim/sim_conf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sim_conf.lo -MD -MP -MF $(DEPDIR)/sim_conf.Tpo -c -o sim_conf.lo `test -f '../../contribs/sim/sim_conf.c' || echo '$(srcdir)/'`../../contribs/sim/sim_conf.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sim_conf.Tpo $(DEPDIR)/sim_conf.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../contribs/sim/sim_conf.c' object='sim_conf.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sim_conf.lo `test -f '../../contribs/sim/sim_conf.c' || echo '$(srcdir)/'`../../contribs/sim/sim_conf.c
+
+sim_time.lo: ../../contribs/sim/sim_time.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sim_time.lo -MD -MP -MF $(DEPDIR)/sim_time.Tpo -c -o sim_time.lo `test -f '../../contribs/sim/sim_time.c' || echo '$(srcdir)/'`../../contribs/sim/sim_time.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sim_time.Tpo $(DEPDIR)/sim_time.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../contribs/sim/sim_time.c' object='sim_time.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sim_time.lo `test -f '../../contribs/sim/sim_time.c' || echo '$(srcdir)/'`../../contribs/sim/sim_time.c
+
+sim_users.lo: ../../contribs/sim/sim_users.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sim_users.lo -MD -MP -MF $(DEPDIR)/sim_users.Tpo -c -o sim_users.lo `test -f '../../contribs/sim/sim_users.c' || echo '$(srcdir)/'`../../contribs/sim/sim_users.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sim_users.Tpo $(DEPDIR)/sim_users.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../contribs/sim/sim_users.c' object='sim_users.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sim_users.lo `test -f '../../contribs/sim/sim_users.c' || echo '$(srcdir)/'`../../contribs/sim/sim_users.c
 
 sim_pthread.lo: ../../contribs/sim/sim_pthread.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sim_pthread.lo -MD -MP -MF $(DEPDIR)/sim_pthread.Tpo -c -o sim_pthread.lo `test -f '../../contribs/sim/sim_pthread.c' || echo '$(srcdir)/'`../../contribs/sim/sim_pthread.c
@@ -926,7 +967,11 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/run_command.Plo
 	-rm -f ./$(DEPDIR)/run_in_daemon.Plo
 	-rm -f ./$(DEPDIR)/setproctitle.Plo
+	-rm -f ./$(DEPDIR)/sim_conf.Plo
+	-rm -f ./$(DEPDIR)/sim_init.Plo
 	-rm -f ./$(DEPDIR)/sim_pthread.Plo
+	-rm -f ./$(DEPDIR)/sim_time.Plo
+	-rm -f ./$(DEPDIR)/sim_users.Plo
 	-rm -f ./$(DEPDIR)/slurm_errno.Plo
 	-rm -f ./$(DEPDIR)/slurm_opt.Plo
 	-rm -f ./$(DEPDIR)/slurm_persist_conn.Plo
@@ -1052,7 +1097,11 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/run_command.Plo
 	-rm -f ./$(DEPDIR)/run_in_daemon.Plo
 	-rm -f ./$(DEPDIR)/setproctitle.Plo
+	-rm -f ./$(DEPDIR)/sim_conf.Plo
+	-rm -f ./$(DEPDIR)/sim_init.Plo
 	-rm -f ./$(DEPDIR)/sim_pthread.Plo
+	-rm -f ./$(DEPDIR)/sim_time.Plo
+	-rm -f ./$(DEPDIR)/sim_users.Plo
 	-rm -f ./$(DEPDIR)/slurm_errno.Plo
 	-rm -f ./$(DEPDIR)/slurm_opt.Plo
 	-rm -f ./$(DEPDIR)/slurm_persist_conn.Plo

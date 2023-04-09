@@ -27603,6 +27603,8 @@ fi
     test "$GCC" = yes && CFLAGS="$CFLAGS -DSLURM_SIMULATOR"
     test "$GXX" = yes && CXXFLAGS="$CXXFLAGS -DSLURM_SIMULATOR"
     LIBS="$LIBS -lrt -lm"
+    # wrapping getting user and group funtions (getpwnam_r, getpwuid_r, getgrnam_r and getgrgid_r)
+    LDFLAGS="-Wl,-wrap,getpwnam_r -Wl,-wrap,getpwuid_r -Wl,-wrap,getgrnam_r -Wl,-wrap,getgrgid_r $LDFLAGS"
 
 printf "%s\n" "#define SLURM_SIMULATOR 1" >>confdefs.h
 
