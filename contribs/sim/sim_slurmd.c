@@ -63,7 +63,7 @@ extern int sim_registration_engine()
 	START_TIMER;
 	while (1) {
 		END_TIMER;
-		if ((send_registration_msg(SLURM_SUCCESS, true) !=	 SLURM_SUCCESS)) {
+		if ((send_registration_msg(SLURM_SUCCESS) !=	 SLURM_SUCCESS)) {
 			debug("Unable to register with slurm controller, retrying");
 		} else if(DELTA_TIMER > 60000000) {
 			error("Unable to register with slurm controller");

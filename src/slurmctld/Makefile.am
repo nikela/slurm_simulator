@@ -96,7 +96,7 @@ if ENABLE_SIMULATOR
         depend_ldadd += $(NUMA_LIBS)
 # These 2 depend_* should look the same in ../slurmstepd/Makefile.am
 depend_ldadd += $(HWLOC_LIBS) $(PAM_LIBS) $(UTIL_LIBS)
-depend_ldflags += $(HWLOC_LDFLAGS)
+depend_ldflags += $(HWLOC_LDFLAGS) $(SLURMD_INTERFACES)
 
 # This is needed to actually link to the libs that it doesn't use.
 depend_ldflags += -Wl,--no-as-needed
@@ -111,6 +111,9 @@ slurmctld_LDADD = $(depend_libs) $(LIB_SLURM) $(SLURMCTLD_INTERFACES) $(depend_l
 slurmctld_LDFLAGS = $(CMD_LDFLAGS) $(depend_ldflags)
 
 slurmctld_DEPENDENCIES = $(LIB_SLURM_BUILD) $(SLURMCTLD_INTERFACES)
+if ENABLE_SIMULATOR
+slurmctld_DEPENDENCIES += $(SLURMD_INTERFACES)
+endif
 
 force:
 $(slurmctld_DEPENDENCIES) : force
