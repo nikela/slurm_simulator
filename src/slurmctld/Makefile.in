@@ -113,8 +113,9 @@ target_triplet = @target@
 
 # This is needed to actually link to the libs that it doesn't use.
 @ENABLE_SIMULATOR_TRUE@am__append_5 = $(HWLOC_LDFLAGS) \
-@ENABLE_SIMULATOR_TRUE@	-Wl,--no-as-needed
+@ENABLE_SIMULATOR_TRUE@	$(SLURMD_INTERFACES) -Wl,--no-as-needed
 sbin_PROGRAMS = slurmctld$(EXEEXT)
+@ENABLE_SIMULATOR_TRUE@am__append_6 = $(SLURMD_INTERFACES)
 subdir = src/slurmctld
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/auxdir/ax_check_compile_flag.m4 \
@@ -624,7 +625,8 @@ depend_ldflags = $(am__append_5)
 @ENABLE_SIMULATOR_TRUE@slurmctld_CFLAGS = -Dwaitpid_timeout=slurmctld_waitpid_timeout
 slurmctld_LDADD = $(depend_libs) $(LIB_SLURM) $(SLURMCTLD_INTERFACES) $(depend_ldadd)
 slurmctld_LDFLAGS = $(CMD_LDFLAGS) $(depend_ldflags)
-slurmctld_DEPENDENCIES = $(LIB_SLURM_BUILD) $(SLURMCTLD_INTERFACES)
+slurmctld_DEPENDENCIES = $(LIB_SLURM_BUILD) $(SLURMCTLD_INTERFACES) \
+	$(am__append_6)
 all: all-am
 
 .SUFFIXES:
