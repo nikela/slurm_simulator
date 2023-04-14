@@ -428,7 +428,7 @@ void sim_insert_event_comp_job(uint32_t job_id)
 		return;
 	}
 	int64_t when;
-	const int64_t year=365*24*3600*1000000;
+	const int64_t year=365*24*3600*(int64_t)1000000;
 	if(sim_job->start_time == 0){
 		pthread_mutex_lock(&active_job_mutex);
 		sim_job->start_time = get_sim_utime();
