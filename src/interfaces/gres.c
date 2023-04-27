@@ -3434,7 +3434,11 @@ static int _node_config_validate(char *node_name, char *orig_config,
 				   slurmd_conf_tot.gres_cnt,
 				   gres_ns->gres_cnt_config);
 		}
-		rc = EINVAL;
+        if(config_overrides) {
+            slurmd_conf_tot.gres_cnt = gres_ns->gres_cnt_config;
+        } else {
+            rc = EINVAL;
+        }
 	}
 	if ((slurmd_conf_tot.gres_cnt > gres_ns->gres_cnt_config)) {
 		debug("%s: %s: Ignoring excess count on node %s (%"
