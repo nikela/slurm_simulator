@@ -1042,6 +1042,10 @@ extern int init(void)
 	if (_setup_controllers() != SLURM_SUCCESS)
 		return SLURM_ERROR;
 
+#ifdef SLURM_SIMULATOR
+    slurm_cgroup_conf.ignore_systemd_on_failure = true;
+#endif
+
 	/*
 	 * slurmd will setup a new home for future slurmstepds. Every stepd
 	 * will emigrate to this new place.

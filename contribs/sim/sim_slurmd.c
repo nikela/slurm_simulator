@@ -5,7 +5,7 @@
 int slurmd_argc;
 char **slurmd_argv;
 
-static int _set_slurmd_arg(int argc, char **argv)
+static int sim_set_slurmd_arg(int argc, char **argv)
 {
 	/* argc and argv are from slurmctld update them */
 	int i;
@@ -28,10 +28,15 @@ static int _set_slurmd_arg(int argc, char **argv)
 
 extern int sim_init_slurmd()
 {
-	int argc=1;
-	char **argv=xcalloc(2,sizeof(char *));
-	argv[0]=xstrdup("slurmd");
-	argv[1]=NULL;
+    /*
+     * Copy of critical inits from slurmd.c:main
+     */
+    char *slurm_prog_name_old = slurm_prog_name;
+    slurm_prog_name = xstrdup("slurmd");
+	int argc = 1;
+	char **argv = xcalloc(2,sizeof(char *));
+	argv[0] = xstrdup("slurmd");
+	argv[1] = NULL;
 
 	optind=0;
 	/*
@@ -42,7 +47,7 @@ extern int sim_init_slurmd()
 	_init_conf();
 	conf->daemonize   =  0;
 
-	_set_slurmd_arg(argc, argv);
+	sim_set_slurmd_arg(argc, argv);
 	conf->argv = &slurmd_argv;
 	conf->argc = &slurmd_argc;
 
@@ -53,7 +58,9 @@ extern int sim_init_slurmd()
 	}
 	// rewind getopt
 	optind = 1;
-
+    slurm_prog_name = slurm_prog_name_old;
+    running_in_slurmctld_reset();
+    running_in_slurmctld();
 	return 0;
 }
 

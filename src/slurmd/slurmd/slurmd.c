@@ -2035,10 +2035,14 @@ _slurmd_init(void)
 	 * attach the slurmd pid to system cgroup, and after _read_config to
 	 * have proper logging.
 	 */
-	if (cgroup_g_init() != SLURM_SUCCESS) {
+#ifndef SLURM_SIMULATOR
+
+    if (cgroup_g_init() != SLURM_SUCCESS) {
 		error("Unable to initialize cgroup plugin");
 		return SLURM_ERROR;
 	}
+
+#endif
 
 #ifndef HAVE_FRONT_END
 	if (!find_node_record(conf->node_name))
@@ -2572,7 +2576,9 @@ static int _set_topo_info(void)
  */
 static int _resource_spec_init(void)
 {
+#ifndef SLURM_SIMULATOR
 	fini_system_cgroup();	/* Prevent memory leak */
+#endif
 	if (_core_spec_init() != SLURM_SUCCESS)
 		error("Resource spec: core specialization disabled");
 	if (_memory_spec_init() != SLURM_SUCCESS)
