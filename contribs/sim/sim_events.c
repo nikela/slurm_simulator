@@ -435,7 +435,7 @@ void sim_insert_event_comp_job(uint32_t job_id)
 		pthread_mutex_unlock(&active_job_mutex);
 	}
 
-	if(sim_job->walltime < year && sim_job->walltime > 0){
+	if(sim_job->walltime < year && sim_job->walltime >= 0){
 		when = sim_job->start_time + sim_job->walltime;
 		//when += slurm_sim_conf->comp_job_delay;
 		sim_insert_event(when, SIM_COMPLETE_BATCH_SCRIPT, (void*)sim_job);
