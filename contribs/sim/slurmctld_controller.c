@@ -32,9 +32,11 @@ pthread_t thread_id_event_thread;
 
 extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job);
 extern int sim_init_slurmd();
-extern void sim_epilog_complete(uint32_t job_id);
+extern void sim_rpc_epilog_complete(uint32_t job_id);
 extern int sim_registration_engine();
-
+extern bool sim_job_epilog_complete(uint32_t job_id, char *node_name,
+                                    uint32_t return_code);
+extern void sim_notify_slurmctld_nodes();
 /*
  * read and remove simulation related arguments
  */
@@ -75,6 +77,8 @@ static void sim_slurmctld_parse_commandline(int *new_argc, char ***new_argv, int
 void sim_complete_job(uint32_t job_id)
 {
 	//char *hostname;
+    bool exit_status;
+    int error_code;
 	job_record_t *job_ptr = find_job_record(job_id);
 
 	if(job_ptr==NULL){
@@ -103,7 +107,7 @@ void sim_complete_job(uint32_t job_id)
 		job_ptr->user_id, job_id);
 
 	if(IS_JOB_COMPLETING(job_ptr)){
-		sim_epilog_complete(job_ptr->job_id);
+		sim_rpc_epilog_complete(job_ptr->job_id);
 		sim_remove_active_sim_job(job_id);
 		return;
 	}
@@ -123,12 +127,112 @@ void sim_complete_job(uint32_t job_id)
 		  .node = WRITE_LOCK,
 		  .fed  = READ_LOCK };
 
-	lock_slurmctld(job_write_lock1);
-	job_complete(job_ptr->job_id, job_ptr->user_id, false, false, SLURM_SUCCESS);
-	unlock_slurmctld(job_write_lock1);
+    lock_slurmctld(job_write_lock1);
+    error_code = job_complete(job_ptr->job_id, job_ptr->user_id, false, false, SLURM_SUCCESS);
+    unlock_slurmctld(job_write_lock1);
 
-	sim_insert_event_epilog_complete(job_id);
+    if(error_code==SLURM_SUCCESS){
+        exit_status = sim_job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
+        if (exit_status){
+            // @todo proper handling whould include sending REQUEST_TERMINATE_JOB
+            // here we skipping it
+            sim_remove_active_sim_job(job_id);
+            // agent after sending REQUEST_TERMINATE_JOB will ask to run scheduler
+            sim_notify_slurmctld_nodes();
+        } else {
+            sim_insert_event_rpc_epilog_complete(job_id);
+        }
+    } else {
+        sim_insert_event_rpc_epilog_complete(job_id);
+    }
 }
+
+
+void sim_rpc_epilog_complete(uint32_t job_id)
+{
+    //char *hostname;
+    bool run_scheduler = false;
+    bool defer_sched = (xstrcasestr(slurm_conf.sched_params, "defer"));
+
+    job_record_t *job_ptr = find_job_record(job_id);
+
+    if(job_ptr==NULL){
+        error("Can not find record for %d job!", job_id);
+        sim_remove_active_sim_job(job_id);
+        return;
+    }
+
+
+    slurmctld_lock_t job_write_lock = {
+            NO_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, READ_LOCK };
+
+    if(IS_JOB_COMPLETING(job_ptr)){
+        lock_slurmctld(job_write_lock);
+        if (job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS))
+            run_scheduler = true;
+        unlock_slurmctld(job_write_lock);
+
+        if (run_scheduler) {
+            /*
+             * In defer mode, avoid triggering the scheduler logic
+             * for every epilog complete message.
+             * As one epilog message is sent from every node of each
+             * job at termination, the number of simultaneous schedule
+             * calls can be very high for large machine or large number
+             * of managed jobs.
+             */
+            if (!LOTS_OF_AGENTS && !defer_sched){
+                debug3("Calling schedule from epilog_complete");
+                schedule(false);	/* Has own locking */
+            }
+            else{
+                debug3("Calling queue_job_scheduler from epilog_complete");
+                queue_job_scheduler();
+            }
+            schedule_node_save();		/* Has own locking */
+            schedule_job_save();		/* Has own locking */
+        }
+        sim_remove_active_sim_job(job_id);
+        return;
+    }
+    if(!IS_JOB_RUNNING(job_ptr)){
+        error("Can not stop %d job, it is not running (%s (%d))!",
+              job_id, job_state_string(job_ptr->job_state), job_ptr->job_state);
+        sim_remove_active_sim_job(job_id);
+        return;
+    }
+
+    // MESSAGE_EPILOG_COMPLETE
+    lock_slurmctld(job_write_lock);
+    if (job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS))
+        run_scheduler = true;
+    unlock_slurmctld(job_write_lock);
+
+    if (run_scheduler) {
+        /*
+         * In defer mode, avoid triggering the scheduler logic
+         * for every epilog complete message.
+         * As one epilog message is sent from every node of each
+         * job at termination, the number of simultaneous schedule
+         * calls can be very high for large machine or large number
+         * of managed jobs.
+         */
+        if (!LOTS_OF_AGENTS && !defer_sched){
+            debug3("Calling schedule from epilog_complete");
+            schedule(false);	/* Has own locking */
+        }
+        else{
+            debug3("Calling queue_job_scheduler from epilog_complete");
+            queue_job_scheduler();
+        }
+        schedule_node_save();		/* Has own locking */
+        schedule_job_save();		/* Has own locking */
+    }
+
+    //free(hostname);
+    sim_remove_active_sim_job(job_id);
+}
+
 
 // 0 means such event currently do not occur
 // 1 means expecting such event in feture
@@ -259,7 +363,7 @@ void *sim_events_thread(void *no_data)
 					break;
 				case SIM_EPILOG_COMPLETE:
 					event_started(EPILOG_COMPLETE_SSIM_RT_EVENT);
-					sim_epilog_complete(((sim_job_t*)event->payload)->job_id);
+					sim_rpc_epilog_complete(((sim_job_t*)event->payload)->job_id);
 					event_ended(EPILOG_COMPLETE_SSIM_RT_EVENT);
 				default:
 					break;

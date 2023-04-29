@@ -40,7 +40,7 @@ extern void sim_print_event(sim_event_t * event);
 
 extern void sim_insert_event(int64_t when, int type, void *payload);
 extern void sim_insert_event_comp_job(uint32_t job_id);
-extern void sim_insert_event_epilog_complete(uint32_t job_id);
+extern void sim_insert_event_rpc_epilog_complete(uint32_t job_id);
 extern void sim_job_requested_kill_timelimit(uint32_t job_id);
 
 extern pthread_mutex_t events_mutex;

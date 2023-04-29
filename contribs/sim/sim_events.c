@@ -463,11 +463,11 @@ void sim_job_requested_kill_timelimit(uint32_t job_id)
 	sim_insert_event(get_sim_utime()+slurm_sim_conf->timelimit_delay, SIM_COMPLETE_BATCH_SCRIPT, (void*)sim_job);
 }
 
-void sim_insert_event_epilog_complete(uint32_t job_id)
+void sim_insert_event_rpc_epilog_complete(uint32_t job_id)
 {
 	sim_job_t *sim_job = sim_find_active_sim_job(job_id);
 	if(sim_job==NULL) {
-		error("Sim:sim_insert_event_epilog_complete: Can not find job %d among active sim jobs!", job_id);
+		error("Sim:sim_insert_event_rpc_epilog_complete: Can not find job %d among active sim jobs!", job_id);
 		return;
 	}
 	if(sim_job->comp_job) {

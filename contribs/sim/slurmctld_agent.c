@@ -13,90 +13,19 @@ typedef struct agent_arg agent_arg_t;
 
 extern void sim_complete_job(uint32_t job_id);
 
-void sim_epilog_complete(uint32_t job_id)
+
+extern bool sim_job_epilog_complete(uint32_t job_id, char *node_name,
+                                    uint32_t return_code)
 {
-	//char *hostname;
-	bool defer_sched = (xstrcasestr(slurm_conf.sched_params, "defer"));
-
-	job_record_t *job_ptr = find_job_record(job_id);
-
-	if(job_ptr==NULL){
-		error("Can not find record for %d job!", job_id);
-		sim_remove_active_sim_job(job_id);
-		return;
-	}
-
-
-	slurmctld_lock_t job_write_lock = {
-			NO_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, READ_LOCK };
-
-	if(IS_JOB_COMPLETING(job_ptr)){
-		lock_slurmctld(job_write_lock);
-		if (job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS))
-			run_scheduler = true;
-		unlock_slurmctld(job_write_lock);
-
-		if (run_scheduler) {
-			/*
-			 * In defer mode, avoid triggering the scheduler logic
-			 * for every epilog complete message.
-			 * As one epilog message is sent from every node of each
-			 * job at termination, the number of simultaneous schedule
-			 * calls can be very high for large machine or large number
-			 * of managed jobs.
-			 */
-			if (!LOTS_OF_AGENTS && !defer_sched){
-				debug3("Calling schedule from epilog_complete");
-				schedule(false);	/* Has own locking */
-			}
-			else{
-				debug3("Calling queue_job_scheduler from epilog_complete");
-				queue_job_scheduler();
-			}
-			schedule_node_save();		/* Has own locking */
-			schedule_job_save();		/* Has own locking */
-		}
-		sim_remove_active_sim_job(job_id);
-		return;
-	}
-	if(!IS_JOB_RUNNING(job_ptr)){
-		error("Can not stop %d job, it is not running (%s (%d))!",
-				job_id, job_state_string(job_ptr->job_state), job_ptr->job_state);
-		sim_remove_active_sim_job(job_id);
-		return;
-	}
-
-	// MESSAGE_EPILOG_COMPLETE
-	lock_slurmctld(job_write_lock);
-	if (job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS))
-		run_scheduler = true;
-	unlock_slurmctld(job_write_lock);
-
-	if (run_scheduler) {
-		/*
-		 * In defer mode, avoid triggering the scheduler logic
-		 * for every epilog complete message.
-		 * As one epilog message is sent from every node of each
-		 * job at termination, the number of simultaneous schedule
-		 * calls can be very high for large machine or large number
-		 * of managed jobs.
-		 */
-		if (!LOTS_OF_AGENTS && !defer_sched){
-			debug3("Calling schedule from epilog_complete");
-			schedule(false);	/* Has own locking */
-		}
-		else{
-			debug3("Calling queue_job_scheduler from epilog_complete");
-			queue_job_scheduler();
-		}
-		schedule_node_save();		/* Has own locking */
-		schedule_job_save();		/* Has own locking */
-	}
-
-	//free(hostname);
-	sim_remove_active_sim_job(job_id);
+    bool status;
+    status = job_epilog_complete(job_id, node_name, return_code);
+    if(status) {
+        run_scheduler = true;
+        debug2("%s: job_id=%d job_epilog_complete on is_kill_msg run_scheduler=true",
+               __func__, job_id);
+    }
+    return status;
 }
-
 
 // this wrap actual agent_queue_request
 // handle faken requests
@@ -152,4 +81,13 @@ void agent_queue_request(agent_arg_t *agent_arg_ptr)
 	if(call_slurmctld_agent_queue_request) {
 		slurmctld_agent_queue_request(agent_arg_ptr);
 	}
+}
+
+void sim_notify_slurmctld_nodes()
+{
+    if (run_scheduler) {
+        run_scheduler = false;
+        /* below functions all have their own locking */
+        queue_job_scheduler();
+    }
 }
