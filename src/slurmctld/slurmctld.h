@@ -2238,8 +2238,8 @@ void purge_old_job(void);
 extern void qos_list_build(char *qos, bitstr_t **qos_bits);
 
 /* Request that the job scheduler execute soon (typically within seconds) */
-extern void queue_job_scheduler(void);
-
+#define queue_job_scheduler() queue_job_scheduler_c(__func__);
+extern void queue_job_scheduler_c(const char *from);
 /*
  * rehash_jobs - Create or rebuild the job hash table.
  * NOTE: run lock_slurmctld before entry: Read config, write job

@@ -1258,11 +1258,12 @@ static void _reconfigure_slurm(void)
 }
 
 /* Request that the job scheduler execute soon (typically within seconds) */
-extern void queue_job_scheduler(void)
+extern void queue_job_scheduler_c(const char* from)
 {
-	slurm_mutex_lock(&sched_cnt_mutex);
-	job_sched_cnt++;
-	slurm_mutex_unlock(&sched_cnt_mutex);
+    slurm_mutex_lock(&sched_cnt_mutex);
+    job_sched_cnt++;
+    debug2("queue_job_scheduler request from %s job_sched_cnt=%d",from,job_sched_cnt);
+    slurm_mutex_unlock(&sched_cnt_mutex);
 }
 
 /* _slurmctld_signal_hand - Process daemon-wide signals */
