@@ -100,9 +100,10 @@ target_triplet = @target@
 @ENABLE_SIMULATOR_TRUE@	../../contribs/sim/sim_slurmd_req.c	\
 @ENABLE_SIMULATOR_TRUE@	../../contribs/sim/sim_slurmd_get_mach_stat.c	\
 @ENABLE_SIMULATOR_TRUE@	../../contribs/sim/slurmctld_controller.c	\
-@ENABLE_SIMULATOR_TRUE@	../../contribs/sim/slurmctld_agent.c
+@ENABLE_SIMULATOR_TRUE@	../../contribs/sim/slurmctld_agent.c \
+@ENABLE_SIMULATOR_TRUE@    ../../contribs/sim/slurmctld_job_scheduler.c
 
-@ENABLE_SIMULATOR_FALSE@am__append_2 = controller.c agent.c
+@ENABLE_SIMULATOR_FALSE@am__append_2 = controller.c agent.c job_scheduler.c
 @ENABLE_SIMULATOR_TRUE@am__append_3 = \
 @ENABLE_SIMULATOR_TRUE@    $(top_builddir)/src/bcast/libfile_bcast.la \
 @ENABLE_SIMULATOR_TRUE@	$(top_builddir)/src/slurmd/common/libslurmd_common.la
@@ -189,18 +190,19 @@ PROGRAMS = $(sbin_PROGRAMS)
 @ENABLE_SIMULATOR_TRUE@	slurmctld-sim_slurmd_req.$(OBJEXT) \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-sim_slurmd_get_mach_stat.$(OBJEXT) \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-slurmctld_controller.$(OBJEXT) \
-@ENABLE_SIMULATOR_TRUE@	slurmctld-slurmctld_agent.$(OBJEXT)
+@ENABLE_SIMULATOR_TRUE@	slurmctld-slurmctld_agent.$(OBJEXT) \
+@ENABLE_SIMULATOR_TRUE@	slurmctld-slurmctld_job_scheduler.$(OBJEXT)
 @ENABLE_SIMULATOR_FALSE@am__objects_2 =  \
 @ENABLE_SIMULATOR_FALSE@	slurmctld-controller.$(OBJEXT) \
-@ENABLE_SIMULATOR_FALSE@	slurmctld-agent.$(OBJEXT)
+@ENABLE_SIMULATOR_FALSE@	slurmctld-agent.$(OBJEXT) \
+@ENABLE_SIMULATOR_FALSE@	slurmctld-job_scheduler.$(OBJEXT)
 am_slurmctld_OBJECTS = slurmctld-acct_policy.$(OBJEXT) \
 	slurmctld-backup.$(OBJEXT) slurmctld-crontab.$(OBJEXT) \
 	slurmctld-fed_mgr.$(OBJEXT) slurmctld-front_end.$(OBJEXT) \
 	slurmctld-gang.$(OBJEXT) slurmctld-gres_ctld.$(OBJEXT) \
 	slurmctld-groups.$(OBJEXT) slurmctld-heartbeat.$(OBJEXT) \
-	slurmctld-job_mgr.$(OBJEXT) slurmctld-job_scheduler.$(OBJEXT) \
-	slurmctld-licenses.$(OBJEXT) slurmctld-locks.$(OBJEXT) \
-	slurmctld-node_mgr.$(OBJEXT) \
+	slurmctld-job_mgr.$(OBJEXT) slurmctld-licenses.$(OBJEXT) \
+	slurmctld-locks.$(OBJEXT) slurmctld-node_mgr.$(OBJEXT) \
 	slurmctld-node_scheduler.$(OBJEXT) \
 	slurmctld-partition_mgr.$(OBJEXT) \
 	slurmctld-ping_nodes.$(OBJEXT) slurmctld-port_mgr.$(OBJEXT) \
@@ -280,6 +282,7 @@ am__depfiles_remade = ./$(DEPDIR)/slurmctld-acct_policy.Po \
 	./$(DEPDIR)/slurmctld-sim_slurmd_req.Po \
 	./$(DEPDIR)/slurmctld-slurmctld_agent.Po \
 	./$(DEPDIR)/slurmctld-slurmctld_controller.Po \
+	./$(DEPDIR)/slurmctld-slurmctld_job_scheduler.Po \
 	./$(DEPDIR)/slurmctld-slurmscriptd.Po \
 	./$(DEPDIR)/slurmctld-slurmscriptd_protocol_defs.Po \
 	./$(DEPDIR)/slurmctld-slurmscriptd_protocol_pack.Po \
@@ -606,18 +609,18 @@ AM_CPPFLAGS = -I$(top_srcdir)
 slurmctld_SOURCES = acct_policy.c acct_policy.h agent.h backup.c \
 	crontab.c fed_mgr.c fed_mgr.h front_end.c front_end.h gang.c \
 	gang.h gres_ctld.c gres_ctld.h groups.c groups.h heartbeat.c \
-	heartbeat.h job_mgr.c job_scheduler.c job_scheduler.h \
-	licenses.c licenses.h locks.c locks.h node_mgr.c \
-	node_scheduler.c node_scheduler.h partition_mgr.c ping_nodes.c \
-	ping_nodes.h port_mgr.c port_mgr.h power_save.c power_save.h \
-	prep_slurmctld.c proc_req.c proc_req.h rate_limit.c \
-	rate_limit.h read_config.c read_config.h reservation.c \
-	reservation.h rpc_queue.c rpc_queue.h slurmctld.h \
-	slurmscriptd.c slurmscriptd.h slurmscriptd_protocol_defs.c \
-	slurmscriptd_protocol_defs.h slurmscriptd_protocol_pack.c \
-	slurmscriptd_protocol_pack.h srun_comm.c srun_comm.h \
-	state_save.c state_save.h statistics.c step_mgr.c \
-	trigger_mgr.c trigger_mgr.h $(am__append_1) $(am__append_2)
+	heartbeat.h job_mgr.c job_scheduler.h licenses.c licenses.h \
+	locks.c locks.h node_mgr.c node_scheduler.c node_scheduler.h \
+	partition_mgr.c ping_nodes.c ping_nodes.h port_mgr.c \
+	port_mgr.h power_save.c power_save.h prep_slurmctld.c \
+	proc_req.c proc_req.h rate_limit.c rate_limit.h read_config.c \
+	read_config.h reservation.c reservation.h rpc_queue.c \
+	rpc_queue.h slurmctld.h slurmscriptd.c slurmscriptd.h \
+	slurmscriptd_protocol_defs.c slurmscriptd_protocol_defs.h \
+	slurmscriptd_protocol_pack.c slurmscriptd_protocol_pack.h \
+	srun_comm.c srun_comm.h state_save.c state_save.h statistics.c \
+	step_mgr.c trigger_mgr.c trigger_mgr.h $(am__append_1) \
+	$(am__append_2)
 depend_libs = $(am__append_3)
 depend_ldadd = $(am__append_4)
 depend_ldflags = $(am__append_5)
@@ -756,6 +759,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-sim_slurmd_req.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-slurmctld_agent.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-slurmctld_controller.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-slurmctld_job_scheduler.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-slurmscriptd.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-slurmscriptd_protocol_defs.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-slurmscriptd_protocol_pack.Po@am__quote@ # am--include-marker
@@ -932,20 +936,6 @@ slurmctld-job_mgr.obj: job_mgr.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='job_mgr.c' object='slurmctld-job_mgr.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-job_mgr.obj `if test -f 'job_mgr.c'; then $(CYGPATH_W) 'job_mgr.c'; else $(CYGPATH_W) '$(srcdir)/job_mgr.c'; fi`
-
-slurmctld-job_scheduler.o: job_scheduler.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-job_scheduler.o -MD -MP -MF $(DEPDIR)/slurmctld-job_scheduler.Tpo -c -o slurmctld-job_scheduler.o `test -f 'job_scheduler.c' || echo '$(srcdir)/'`job_scheduler.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-job_scheduler.Tpo $(DEPDIR)/slurmctld-job_scheduler.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='job_scheduler.c' object='slurmctld-job_scheduler.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-job_scheduler.o `test -f 'job_scheduler.c' || echo '$(srcdir)/'`job_scheduler.c
-
-slurmctld-job_scheduler.obj: job_scheduler.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-job_scheduler.obj -MD -MP -MF $(DEPDIR)/slurmctld-job_scheduler.Tpo -c -o slurmctld-job_scheduler.obj `if test -f 'job_scheduler.c'; then $(CYGPATH_W) 'job_scheduler.c'; else $(CYGPATH_W) '$(srcdir)/job_scheduler.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-job_scheduler.Tpo $(DEPDIR)/slurmctld-job_scheduler.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='job_scheduler.c' object='slurmctld-job_scheduler.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-job_scheduler.obj `if test -f 'job_scheduler.c'; then $(CYGPATH_W) 'job_scheduler.c'; else $(CYGPATH_W) '$(srcdir)/job_scheduler.c'; fi`
 
 slurmctld-licenses.o: licenses.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-licenses.o -MD -MP -MF $(DEPDIR)/slurmctld-licenses.Tpo -c -o slurmctld-licenses.o `test -f 'licenses.c' || echo '$(srcdir)/'`licenses.c
@@ -1395,6 +1385,20 @@ slurmctld-slurmctld_agent.obj: ../../contribs/sim/slurmctld_agent.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-slurmctld_agent.obj `if test -f '../../contribs/sim/slurmctld_agent.c'; then $(CYGPATH_W) '../../contribs/sim/slurmctld_agent.c'; else $(CYGPATH_W) '$(srcdir)/../../contribs/sim/slurmctld_agent.c'; fi`
 
+slurmctld-slurmctld_job_scheduler.o: ../../contribs/sim/slurmctld_job_scheduler.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-slurmctld_job_scheduler.o -MD -MP -MF $(DEPDIR)/slurmctld-slurmctld_job_scheduler.Tpo -c -o slurmctld-slurmctld_job_scheduler.o `test -f '../../contribs/sim/slurmctld_job_scheduler.c' || echo '$(srcdir)/'`../../contribs/sim/slurmctld_job_scheduler.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-slurmctld_job_scheduler.Tpo $(DEPDIR)/slurmctld-slurmctld_job_scheduler.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../contribs/sim/slurmctld_job_scheduler.c' object='slurmctld-slurmctld_job_scheduler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-slurmctld_job_scheduler.o `test -f '../../contribs/sim/slurmctld_job_scheduler.c' || echo '$(srcdir)/'`../../contribs/sim/slurmctld_job_scheduler.c
+
+slurmctld-slurmctld_job_scheduler.obj: ../../contribs/sim/slurmctld_job_scheduler.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-slurmctld_job_scheduler.obj -MD -MP -MF $(DEPDIR)/slurmctld-slurmctld_job_scheduler.Tpo -c -o slurmctld-slurmctld_job_scheduler.obj `if test -f '../../contribs/sim/slurmctld_job_scheduler.c'; then $(CYGPATH_W) '../../contribs/sim/slurmctld_job_scheduler.c'; else $(CYGPATH_W) '$(srcdir)/../../contribs/sim/slurmctld_job_scheduler.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-slurmctld_job_scheduler.Tpo $(DEPDIR)/slurmctld-slurmctld_job_scheduler.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../contribs/sim/slurmctld_job_scheduler.c' object='slurmctld-slurmctld_job_scheduler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-slurmctld_job_scheduler.obj `if test -f '../../contribs/sim/slurmctld_job_scheduler.c'; then $(CYGPATH_W) '../../contribs/sim/slurmctld_job_scheduler.c'; else $(CYGPATH_W) '$(srcdir)/../../contribs/sim/slurmctld_job_scheduler.c'; fi`
+
 slurmctld-controller.o: controller.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-controller.o -MD -MP -MF $(DEPDIR)/slurmctld-controller.Tpo -c -o slurmctld-controller.o `test -f 'controller.c' || echo '$(srcdir)/'`controller.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-controller.Tpo $(DEPDIR)/slurmctld-controller.Po
@@ -1422,6 +1426,20 @@ slurmctld-agent.obj: agent.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='agent.c' object='slurmctld-agent.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-agent.obj `if test -f 'agent.c'; then $(CYGPATH_W) 'agent.c'; else $(CYGPATH_W) '$(srcdir)/agent.c'; fi`
+
+slurmctld-job_scheduler.o: job_scheduler.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-job_scheduler.o -MD -MP -MF $(DEPDIR)/slurmctld-job_scheduler.Tpo -c -o slurmctld-job_scheduler.o `test -f 'job_scheduler.c' || echo '$(srcdir)/'`job_scheduler.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-job_scheduler.Tpo $(DEPDIR)/slurmctld-job_scheduler.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='job_scheduler.c' object='slurmctld-job_scheduler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-job_scheduler.o `test -f 'job_scheduler.c' || echo '$(srcdir)/'`job_scheduler.c
+
+slurmctld-job_scheduler.obj: job_scheduler.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-job_scheduler.obj -MD -MP -MF $(DEPDIR)/slurmctld-job_scheduler.Tpo -c -o slurmctld-job_scheduler.obj `if test -f 'job_scheduler.c'; then $(CYGPATH_W) 'job_scheduler.c'; else $(CYGPATH_W) '$(srcdir)/job_scheduler.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-job_scheduler.Tpo $(DEPDIR)/slurmctld-job_scheduler.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='job_scheduler.c' object='slurmctld-job_scheduler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-job_scheduler.obj `if test -f 'job_scheduler.c'; then $(CYGPATH_W) 'job_scheduler.c'; else $(CYGPATH_W) '$(srcdir)/job_scheduler.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -1560,6 +1578,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/slurmctld-sim_slurmd_req.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmctld_agent.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmctld_controller.Po
+	-rm -f ./$(DEPDIR)/slurmctld-slurmctld_job_scheduler.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmscriptd.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmscriptd_protocol_defs.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmscriptd_protocol_pack.Po
@@ -1650,6 +1669,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/slurmctld-sim_slurmd_req.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmctld_agent.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmctld_controller.Po
+	-rm -f ./$(DEPDIR)/slurmctld-slurmctld_job_scheduler.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmscriptd.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmscriptd_protocol_defs.Po
 	-rm -f ./$(DEPDIR)/slurmctld-slurmscriptd_protocol_pack.Po
