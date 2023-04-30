@@ -18,8 +18,10 @@
 #include <string.h>
 
 #include <inttypes.h>
+#include <math.h>
 
 #include "sim_time.h"
+#include "sim_conf.h"
 #include "sim.h"
 
 //should be in shared memory
@@ -332,5 +334,34 @@ int __wrap_nanosleep (const struct timespec *req, struct timespec *rem)
 	}
 	return 0;
 }
+
+extern void sim_backfill_step_scale(uint64_t start_sim_utime,uint64_t start_real_utime,int n)
+{
+    uint64_t cur_real_utime=get_real_utime();
+    uint64_t cur_sim_utime=get_sim_utime();
+
+    double real_dt=cur_real_utime-start_real_utime;
+    double sim_dt=slurm_sim_conf->clock_scaling*real_dt;
+
+    uint64_t new_sim_utime=start_sim_utime+(int)round(sim_dt);
+
+    if(new_sim_utime>cur_sim_utime)
+        set_sim_time(new_sim_utime);
+}
+
+extern void sim_backfill_scale(uint64_t start_sim_utime,uint64_t start_real_utime,int n)
+{
+    uint64_t cur_real_utime=get_real_utime();
+    uint64_t cur_sim_utime=get_sim_utime();
+
+    double real_dt=cur_real_utime-start_real_utime;
+    double sim_dt=slurm_sim_conf->clock_scaling*real_dt;
+
+    uint64_t new_sim_utime=start_sim_utime+(int)round(sim_dt);
+
+    if(new_sim_utime>cur_sim_utime)
+        set_sim_time(new_sim_utime);
+}
+
 
 

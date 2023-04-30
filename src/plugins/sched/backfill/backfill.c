@@ -100,6 +100,16 @@
 #include "src/slurmctld/srun_comm.h"
 #include "backfill.h"
 
+#ifdef SLURM_SIMULATOR
+#include "../../contribs/sim/sim_time.h"
+#include "../../contribs/sim/sim_conf.h"
+#include "../../contribs/sim/sim_events.h"
+#include "../../contribs/sim/sim_jobs.h"
+#include "../../contribs/sim/sim.h"
+#include "../../contribs/sim/slurmctld_sim.h"
+#endif
+
+
 #define BACKFILL_INTERVAL	30
 #define BACKFILL_RESOLUTION	60
 #define BACKFILL_WINDOW		(24 * 60 * 60)
@@ -1153,6 +1163,10 @@ static int _yield_locks(int64_t usec)
 	resv_update = last_resv_update;
 
 	unlock_slurmctld(all_locks);
+#ifdef SLURM_SIMULATOR
+	/* in simulator execute mini loop */
+	sim_mini_loop();
+#endif
 	while (!stop_backfill) {
 		bf_sleep_usec += _my_sleep(usec);
 		slurm_mutex_lock(&slurmctld_config.thread_count_lock);
@@ -1854,6 +1868,12 @@ static void _attempt_backfill(void)
 		assoc_mgr_unlock(&qos_read_lock);
 	}
 
+#ifdef SLURM_SIMULATOR
+	uint64_t bf_start_real_utime=get_real_utime();
+	uint64_t bf_start_sim_utime=get_sim_utime();
+	uint64_t cycle_start_real_utime=bf_start_real_utime;
+	uint64_t cycle_start_sim_utime=bf_start_sim_utime;
+#endif
 	sort_job_queue(job_queue);
 
 	/* Ignore nodes that have been set as available during this cycle. */
@@ -2506,6 +2526,12 @@ next_task:
 			slurmctld_diag_stats.bf_last_depth_try++;
 			job_test_cnt++;
 			already_counted = true;
+
+#ifdef SLURM_SIMULATOR
+			sim_backfill_step_scale(cycle_start_sim_utime,cycle_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
+			cycle_start_real_utime=get_real_utime();
+			cycle_start_sim_utime=get_sim_utime();
+#endif
 		}
 		if (slurm_conf.debug_flags & DEBUG_FLAG_BACKFILL_MAP)
 			_dump_job_test(job_ptr, avail_bitmap, start_res);
@@ -3118,6 +3144,10 @@ skip_start:
 	    (!max_backfill_jobs_start ||
 	     (job_start_cnt < max_backfill_jobs_start)))
 		_het_job_start_test(node_space, 0);
+
+#ifdef SLURM_SIMULATOR
+	sim_backfill_scale(bf_start_sim_utime,bf_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
+#endif
 
 	FREE_NULL_BITMAP(avail_bitmap);
 	FREE_NULL_BITMAP(exc_core_bitmap);
@@ -4200,3 +4230,105 @@ static bool _het_job_deadlock_test(job_record_t *job_ptr)
 
 	return have_deadlock;
 }
+
+
+#ifdef SLURM_SIMULATOR
+/* fake backfill_agent called from simulation main loop
+ * if the time right do backfill if not return the control
+ * return next_backfill_utime*/
+extern uint64_t sim_backfill_agent(void)
+{
+	uint64_t now=get_sim_utime();
+	static bool first_run = true;
+
+	static uint64_t wait_time;
+	/* Read config and partitions; Write jobs and nodes */
+	slurmctld_lock_t all_locks = {
+			READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
+
+	bool load_config;
+	//static bool short_sleep = false;
+	static int backfill_cnt = 0;
+
+	static uint64_t last_backfill_utime;
+	static uint64_t next_backfill_utime;
+
+	if(first_run) {
+		_load_config();
+		_init_planned_bitmap();
+		het_job_list = list_create(_het_job_map_del);
+		first_run = false;
+
+		last_backfill_utime = now - (int64_t) BACKFILL_INTERVAL * USEC_IN_SEC;
+
+		// set up first sleep
+		if (backfill_interval == -1)
+			next_backfill_utime = now+(int64_t) BACKFILL_INTERVAL * USEC_IN_SEC;
+		else
+			next_backfill_utime = now+(int64_t) backfill_interval * USEC_IN_SEC;
+		// correction for start difference
+		next_backfill_utime += -500000;
+	}
+	if(now<next_backfill_utime) {
+		// i.e. sleeping
+		return next_backfill_utime;
+	}
+	// now awake
+	list_flush(het_job_list);
+	slurm_mutex_lock(&config_lock);
+	if (config_flag) {
+		config_flag = false;
+		load_config = true;
+	} else {
+		load_config = false;
+	}
+	slurm_mutex_unlock(&config_lock);
+	if (load_config)
+		_load_config();
+	if (backfill_interval == -1) {
+		log_flag(BACKFILL, "skipping backfill cycle for %ds",
+				 BACKFILL_INTERVAL);
+		return next_backfill_utime;
+	}
+	wait_time = now - last_backfill_utime;
+	if ((wait_time < backfill_interval * USEC_IN_SEC) ||
+		job_is_completing(NULL) || _many_pending_rpcs() ||
+		!avail_front_end(NULL) || !_more_work(last_backfill_utime / USEC_IN_SEC)) {
+		//short_sleep = true;
+		next_backfill_utime = get_sim_utime() + USEC_IN_SEC;
+		debug2("%s: another short_sleep %d %d %d %d",__func__,
+			   job_is_completing(NULL),
+			   _many_pending_rpcs(),
+			   avail_front_end(NULL),
+				_more_work(last_backfill_utime / USEC_IN_SEC));
+		return next_backfill_utime;
+	}
+
+	slurm_mutex_lock(&check_bf_running_lock);
+	slurmctld_diag_stats.bf_active = 1;
+	slurm_mutex_unlock(&check_bf_running_lock);
+
+	lock_slurmctld(all_locks);
+	if ((backfill_cnt++ % 2) == 0)
+		_het_job_start_clear();
+	debug2("%s: %.3f %.3f",__func__,((double)(now-next_backfill_utime)) / USEC_IN_SEC,((double)(get_sim_utime()-next_backfill_utime)) / USEC_IN_SEC);
+	_attempt_backfill();
+	last_backfill_utime = get_sim_utime();
+	(void) bb_g_job_try_stage_in();
+	unlock_slurmctld(all_locks);
+
+	slurm_mutex_lock(&check_bf_running_lock);
+	slurmctld_diag_stats.bf_active = 0;
+	slurm_mutex_unlock(&check_bf_running_lock);
+
+	//short_sleep = false;
+	now=get_sim_utime();
+	if (backfill_interval == -1)
+		next_backfill_utime = now + (int64_t) BACKFILL_INTERVAL * USEC_IN_SEC;
+	else
+		next_backfill_utime = now + (int64_t) backfill_interval * USEC_IN_SEC;
+
+	return next_backfill_utime;
+}
+#endif
+

@@ -38,6 +38,10 @@ extern int sim_registration_engine();
 extern bool sim_job_epilog_complete(uint32_t job_id, char *node_name,
                                     uint32_t return_code);
 extern void sim_notify_slurmctld_nodes();
+
+/* reference to sched_plugin */
+uint64_t (*sim_backfill_agent_ref)(void)=NULL;
+
 /*
  * read and remove simulation related arguments
  */
@@ -323,6 +327,9 @@ void *sim_events_thread(void *no_data)
 	info("sim: current real utime: %s, current sim utime: %s",
 			stmp1, stmp2);
 
+	/* add initial events */
+	sim_schedule_plugin_run_once();
+
 	int scaling_on=0;
 	/*init vars*/
 	while(1) {
@@ -338,13 +345,10 @@ void *sim_events_thread(void *no_data)
 		/* SIM Start */
 		if(sim_next_event->when - now < 0) {
 			while(sim_next_event->when - now < 0) {
-				event = sim_next_event;
-
-				pthread_mutex_lock(&events_mutex);
-				sim_next_event = sim_next_event->next;
-				pthread_mutex_unlock(&events_mutex);
+				event = sim_pop_next_event();
 
 				sim_print_event(event);
+				debug2("%s: sim_n_noncyclic_events=%d sim_n_cyclic_events=%d",__func__ ,sim_n_noncyclic_events,sim_n_cyclic_events);
 
 				switch(event->type) {
 				case SIM_NODE_REGISTRATION:
@@ -366,6 +370,8 @@ void *sim_events_thread(void *no_data)
 					event_started(EPILOG_COMPLETE_SSIM_RT_EVENT);
 					sim_rpc_epilog_complete(((sim_job_t*)event->payload)->job_id);
 					event_ended(EPILOG_COMPLETE_SSIM_RT_EVENT);
+				case SIM_RUN_BACKFILL_SCHEDULER:
+					sim_schedule_plugin_run_once();
 				default:
 					break;
 				}
@@ -377,6 +383,7 @@ void *sim_events_thread(void *no_data)
 		}
         // run main scheduler if needed
         sim_sched_agent_loop();
+
 
 		/*check can we skip some time*/
 		int64_t skipping_to_utime = INT64_MAX;
@@ -438,7 +445,7 @@ void *sim_events_thread(void *no_data)
 
 		/*exit if everything is done*/
 
-		if(sim_next_event==sim_last_event &&
+		if(sim_n_noncyclic_events<=0 &&
 				sim_first_active_job==NULL &&
 				slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0 &&
 				slurm_sim_conf->time_after_all_events_done >=0) {
@@ -470,6 +477,102 @@ void create_sim_events_handler ()
 {
 	slurm_thread_create(&thread_id_event_thread,
 			sim_events_thread, NULL);
+}
+
+/* execure scheduler from schedule_plugin */
+extern void sim_schedule_plugin_run_once()
+{
+	//int backfill_was_ran=0;
+
+	/*double t=get_realtime();
+	struct tms m_tms0,m_tms1;
+
+	clock_t st=clock();
+	times(&m_tms0);*/
+	uint64_t next_backfill_utime;
+	if (sim_backfill_agent_ref!=NULL){
+		//backfill_was_ran=
+		next_backfill_utime=(*sim_backfill_agent_ref)();
+	} else {
+		info("Error: sched_plugin do not support simulator");
+		next_backfill_utime = get_sim_utime()+1000000;
+	}
+	sim_plugin_backfill_thread_sleep_till = next_backfill_utime;
+	sim_insert_event(next_backfill_utime, SIM_RUN_BACKFILL_SCHEDULER, NULL);
+	/*times(&m_tms1);
+	st=clock()-st;
+	t=get_realtime()-t;
+
+	clock_t tms_utime=m_tms1.tms_utime-m_tms0.tms_utime;
+	clock_t tms_stime=m_tms1.tms_stime-m_tms0.tms_stime;
+
+	if(backfill_was_ran && slurm_sim_conf->sim_stat!=NULL){
+		int jobs_pending=0;
+		int jobs_running=0;
+
+		int nodes_idle=0;
+		int nodes_mixed=0;
+		int nodes_allocated=0;
+
+		if(slurm_sim_conf->sim_stat!=NULL){
+			ListIterator job_iterator;
+			struct job_record *job_ptr;
+
+
+			job_iterator = list_iterator_create(job_list);
+			while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
+				if(IS_JOB_PENDING(job_ptr))jobs_pending++;
+				if(IS_JOB_RUNNING(job_ptr))jobs_running++;
+			}
+			list_iterator_destroy(job_iterator);
+
+			int inx;
+			struct node_record *node_ptr = node_record_table_ptr;
+			for (inx = 0; inx < node_record_count; inx++, node_ptr++) {
+				if(IS_NODE_IDLE(node_ptr))nodes_idle++;
+				if(IS_NODE_MIXED(node_ptr))nodes_mixed++;
+				if(IS_NODE_ALLOCATED(node_ptr))nodes_allocated++;
+			}
+		}
+
+
+		FILE *fout=fopen(slurm_sim_conf->sim_stat,"at");
+		if(fout==NULL)
+			return;
+
+		time_t now = time(NULL);
+
+		fprintf(fout, "*Backfill*Stats****************************************\n");
+		fprintf(fout, "Output time: %s", ctime(&now));
+		fprintf(fout, "\tLast cycle when: %s", ctime(&slurmctld_diag_stats.bf_when_last_cycle));
+		fprintf(fout, "\tLast cycle: %u\n", slurmctld_diag_stats.bf_cycle_last);
+		fprintf(fout, "\tLast depth cycle: %u\n", slurmctld_diag_stats.bf_last_depth);
+		fprintf(fout, "\tLast depth cycle (try sched): %u\n", slurmctld_diag_stats.bf_last_depth_try);
+		fprintf(fout, "\tLast queue length: %u\n", slurmctld_diag_stats.bf_queue_len);
+		fprintf(fout, "\tLast backfilled jobs: %u\n", slurmctld_diag_stats.last_backfilled_jobs);
+
+		fprintf(fout, "\tRun real time: %.6f\n", t);
+		fprintf(fout, "\tRun real utime: %ld\n",tms_utime);
+		fprintf(fout, "\tRun real stime: %ld\n",tms_stime);
+		fprintf(fout, "\tCLK_TCK: %ld\n", sysconf (_SC_CLK_TCK));
+		fprintf(fout, "\tRun clock: %ld\n",st);
+		fprintf(fout, "\tCLOCKS_PER_SEC: %ld\n",CLOCKS_PER_SEC);
+
+		fprintf(fout, "\tjobs_pending: %d\n",jobs_pending);
+		fprintf(fout, "\tjobs_running: %d\n",jobs_running);
+		fprintf(fout, "\tnodes_idle: %d\n",nodes_idle);
+		fprintf(fout, "\tnodes_mixed: %d\n",nodes_mixed);
+		fprintf(fout, "\tnodes_allocated: %d\n",nodes_allocated);
+
+		fclose(fout);
+	}
+	if(backfill_was_ran && slurm_sim_conf->sdiag_file_out!=NULL){
+		sim_sdiag_mini();
+	}*/
+}
+
+extern void sim_mini_loop(){
+/*this function is called from backfiller to let events in main scheduler to process */
 }
 
 

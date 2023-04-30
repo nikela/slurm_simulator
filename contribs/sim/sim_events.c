@@ -28,6 +28,8 @@ sim_event_t * sim_first_event = NULL;
 sim_event_t * sim_last_event = NULL;
 sim_event_t * sim_next_event = NULL;
 
+int sim_n_noncyclic_events = 0;
+int sim_n_cyclic_events = 0;
 
 void sim_insert_event2(sim_event_t * event)
 {
@@ -46,9 +48,49 @@ void sim_insert_event2(sim_event_t * event)
 	if(event->when < sim_next_event->when) {
 		sim_next_event = event;
 	}
+    switch(event->type) {
+        case SIM_TIME_ZERO:
+            break;
+        case SIM_TIME_INF:
+            break;
+        case SIM_RUN_BACKFILL_SCHEDULER:
+            sim_n_cyclic_events++;
+            break;
+        default:
+            sim_n_noncyclic_events++;
+            break;
+    }
 	pthread_mutex_unlock(&events_mutex);
 }
 
+extern sim_event_t * sim_pop_next_event()
+{
+    sim_event_t * event = sim_next_event;
+
+    pthread_mutex_lock(&events_mutex);
+    sim_next_event = sim_next_event->next;
+    pthread_mutex_unlock(&events_mutex);
+
+    switch(event->type) {
+        case SIM_TIME_ZERO:
+            break;
+        case SIM_TIME_INF:
+            break;
+        case SIM_RUN_BACKFILL_SCHEDULER:
+            sim_n_cyclic_events--;
+            break;
+        default:
+            sim_n_noncyclic_events--;
+            break;
+    }
+    if(sim_n_noncyclic_events<0){
+        fatal("Removed move events than where added!");
+    }
+    if(sim_n_cyclic_events<0){
+        fatal("Removed move events than where added!");
+    }
+    return event;
+}
 
 void sim_insert_event(int64_t when, int type, void *payload)
 {
@@ -377,8 +419,10 @@ void sim_init_events()
 	// pad events list with small and large time to avoid extra comparison
 	sim_first_event=xcalloc(1,sizeof(*sim_first_event));
 	sim_first_event->when = 0;
+    sim_first_event->type = SIM_TIME_ZERO;
 	sim_last_event=xcalloc(1,sizeof(*sim_last_event));
 	sim_last_event->when = INT64_MAX;
+    sim_last_event->type = SIM_TIME_INF;
 
 	sim_first_event->next = sim_last_event;
 	sim_last_event->previous = sim_first_event;

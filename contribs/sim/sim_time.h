@@ -35,4 +35,8 @@ extern void iso8601_from_utime(char **buf, uint64_t utime, bool msec);
 /* initialize simulation time */
 extern void init_sim_time(uint64_t start_time, double scale, int set_time, int set_time_to_real);
 
+/* time scaling model */
+extern void sim_backfill_step_scale(uint64_t start_sim_utime,uint64_t start_real_utime,int n);
+extern void sim_backfill_scale(uint64_t start_sim_utime,uint64_t start_real_utime,int n);
+
 #endif
