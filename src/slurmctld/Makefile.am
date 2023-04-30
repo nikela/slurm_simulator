@@ -28,7 +28,6 @@ slurmctld_SOURCES =     \
 	heartbeat.c	\
 	heartbeat.h	\
 	job_mgr.c 	\
-	job_scheduler.c	\
 	job_scheduler.h	\
 	licenses.c	\
 	licenses.h	\
@@ -80,9 +79,10 @@ slurmctld_SOURCES +=	\
 	../../contribs/sim/sim_slurmd_req.c	\
 	../../contribs/sim/sim_slurmd_get_mach_stat.c	\
 	../../contribs/sim/slurmctld_controller.c	\
-	../../contribs/sim/slurmctld_agent.c
+	../../contribs/sim/slurmctld_agent.c \
+    ../../contribs/sim/slurmctld_job_scheduler.c
 else
-slurmctld_SOURCES += controller.c agent.c
+slurmctld_SOURCES += controller.c agent.c job_scheduler.c
 endif
 
 depend_libs =

@@ -63,6 +63,9 @@ int sim_pthread_create (pthread_t *newthread,
 		} else if (xstrcmp("&slurmctld_config.thread_id_purge_files", id) == 0) {
 			debug("sim_pthread_create: %s ... skip.", id);
 			return 0;
+		} else if (xstrcmp("&thread_id_sched", id) == 0 && xstrcmp("main_sched_init", funccall) == 0) {
+			debug("sim_pthread_create: %s ... skip.", id);
+			return 0;
 		} else if (xstrcmp("&thread_wdog", id) == 0) {
 			debug("sim_pthread_create: %s ... skip.", id);
 			//return 0;

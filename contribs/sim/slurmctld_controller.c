@@ -23,6 +23,7 @@ pthread_mutex_t proc_rec_count_lock;
 #include "../../contribs/sim/sim_jobs.h"
 #include "../../contribs/sim/sim_rt_events.h"
 #include "../../contribs/sim/sim.h"
+#include "../../contribs/sim/slurmctld_sim.h"
 
 #include <inttypes.h>
 #include <signal.h>
@@ -374,6 +375,9 @@ void *sim_events_thread(void *no_data)
 			//
 			//jobs_submit_count++;
 		}
+        // run main scheduler if needed
+        sim_sched_agent_loop();
+
 		/*check can we skip some time*/
 		int64_t skipping_to_utime = INT64_MAX;
 		int64_t skip_usec;
