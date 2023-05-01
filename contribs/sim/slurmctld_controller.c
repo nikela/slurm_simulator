@@ -12,6 +12,8 @@ int64_t last_sched_time_slurmctld_background;
 int proc_rec_count=0;
 pthread_mutex_t proc_rec_count_lock;
 
+extern void sim_events_loop();
+
 #define main slurmctld_main
 #include "../../src/slurmctld/controller.c"
 #undef main
@@ -293,16 +295,14 @@ int _event_ended(slurm_sim_rt_event_t event_type, const char *s_event_type, cons
 	return 0;
 }
 
-void *sim_events_thread(void *no_data)
+void sim_events_first_loop()
 {
 	//time_t start_time;
 	//int jobs_submit_count=0;
-	static sim_event_t * event = NULL;
-	static time_t all_done=0;
+
 	char *stmp1 = xcalloc(128, sizeof(char));
 	char *stmp2 = xcalloc(128, sizeof(char));
 
-	int64_t now;
 	int64_t cur_real_utime, cur_sim_utime;
 	//int64_t slurmctld_diag_stats_lastcheck;
 	//int64_t last_event_usec=0;
@@ -311,126 +311,140 @@ void *sim_events_thread(void *no_data)
 	sleep(1);
 
 	info("sim: process create real utime: %" PRId64 ", process create sim utime: %" PRId64,
-			process_create_time_real, process_create_time_sim);
+		 process_create_time_real, process_create_time_sim);
 	iso8601_from_utime(&stmp1, process_create_time_real, true);
 	iso8601_from_utime(&stmp2, process_create_time_sim, true);
 	info("sim: process create real time: %s, process create sim time: %s",
-			stmp1, stmp2);
+		 stmp1, stmp2);
 
 	cur_real_utime = get_real_utime();
 	cur_sim_utime = get_sim_utime();
 	info("sim: current real utime: %" PRId64 ", current sim utime: %" PRId64,
-			cur_real_utime, cur_sim_utime);
+		 cur_real_utime, cur_sim_utime);
 	stmp1[0]=0;stmp2[0]=0;
 	iso8601_from_utime(&stmp1, cur_real_utime, true);
 	iso8601_from_utime(&stmp2, cur_sim_utime, true);
 	info("sim: current real utime: %s, current sim utime: %s",
-			stmp1, stmp2);
+		 stmp1, stmp2);
+	xfree(stmp1);
+	xfree(stmp2);
 
 	/* add initial events */
 	sim_schedule_plugin_run_once();
+}
 
-	int scaling_on=0;
-	/*init vars*/
-	while(1) {
+void sim_events_loop()
+{
+	static bool first_run = true;
+
+	if(first_run) {
+		sim_events_first_loop();
+		first_run = false;
+	}
+	static sim_event_t * event = NULL;
+	static int64_t all_done=0;
+
+	static int scaling_on=0;
+	int64_t now;
+	int64_t cur_real_utime;
+
+	now = get_sim_utime();
+	cur_real_utime = get_real_utime();
+	//start_time = now;
+	if(scaling_on==0 && cur_real_utime-process_create_time_real>10000000) {
+		set_sim_time_scale(slurm_sim_conf->clock_scaling);
+		scaling_on=1;
+	}
+
+	/* SIM Start */
+	if(sim_next_event->when - now < 0) {
+		while(sim_next_event->when - now < 0) {
+			event = sim_pop_next_event();
+
+			sim_print_event(event);
+			debug2("%s: sim_n_noncyclic_events=%d sim_n_cyclic_events=%d",__func__ ,sim_n_noncyclic_events,sim_n_cyclic_events);
+
+			switch(event->type) {
+			case SIM_NODE_REGISTRATION:
+				event_started(GENERAL_SSIM_RT_EVENT);
+				sim_registration_engine();
+				event_ended(GENERAL_SSIM_RT_EVENT);
+				break;
+			case SIM_SUBMIT_BATCH_JOB:
+				event_started(SUBMIT_JOB_SSIM_RT_EVENT);
+				submit_job((sim_event_submit_batch_job_t*)event->payload);
+				event_ended(SUBMIT_JOB_SSIM_RT_EVENT);
+				break;
+			case SIM_COMPLETE_BATCH_SCRIPT:
+				event_started(GENERAL_SSIM_RT_EVENT);
+				sim_complete_job(((sim_job_t*)event->payload)->job_id);
+				event_ended(GENERAL_SSIM_RT_EVENT);
+				break;
+			case SIM_EPILOG_COMPLETE:
+				event_started(EPILOG_COMPLETE_SSIM_RT_EVENT);
+				sim_rpc_epilog_complete(((sim_job_t*)event->payload)->job_id);
+				event_ended(EPILOG_COMPLETE_SSIM_RT_EVENT);
+			case SIM_RUN_BACKFILL_SCHEDULER:
+				sim_schedule_plugin_run_once();
+			default:
+				break;
+			}
+			//last_event_usec = get_sim_utime();
+
+		}
+		//
+		//jobs_submit_count++;
+	}
+	// run main scheduler if needed
+	sim_sched_agent_loop();
+
+
+	/*check can we skip some time*/
+	int64_t skipping_to_utime = INT64_MAX;
+	int64_t skip_usec;
+	if(sim_main_thread_sleep_till > 0) {
+		skipping_to_utime = sim_main_thread_sleep_till;
+		skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
+		//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
+		skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
+		skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
+		skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
+		skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
+		if(job_sched_cnt>0) {
+			skipping_to_utime = MIN(skipping_to_utime, last_sched_time_slurmctld_background+batch_sched_delay*1000000);
+		}
 
 		now = get_sim_utime();
-		cur_real_utime = get_real_utime();
-		//start_time = now;
-		if(scaling_on==0 && cur_real_utime-process_create_time_real>10000000) {
-			set_sim_time_scale(slurm_sim_conf->clock_scaling);
-			scaling_on=1;
-		}
 
-		/* SIM Start */
-		if(sim_next_event->when - now < 0) {
-			while(sim_next_event->when - now < 0) {
-				event = sim_pop_next_event();
 
-				sim_print_event(event);
-				debug2("%s: sim_n_noncyclic_events=%d sim_n_cyclic_events=%d",__func__ ,sim_n_noncyclic_events,sim_n_cyclic_events);
 
-				switch(event->type) {
-				case SIM_NODE_REGISTRATION:
-					event_started(GENERAL_SSIM_RT_EVENT);
-					sim_registration_engine();
-					event_ended(GENERAL_SSIM_RT_EVENT);
-					break;
-				case SIM_SUBMIT_BATCH_JOB:
-					event_started(SUBMIT_JOB_SSIM_RT_EVENT);
-					submit_job((sim_event_submit_batch_job_t*)event->payload);
-					event_ended(SUBMIT_JOB_SSIM_RT_EVENT);
-					break;
-				case SIM_COMPLETE_BATCH_SCRIPT:
-					event_started(GENERAL_SSIM_RT_EVENT);
-					sim_complete_job(((sim_job_t*)event->payload)->job_id);
-					event_ended(GENERAL_SSIM_RT_EVENT);
-					break;
-				case SIM_EPILOG_COMPLETE:
-					event_started(EPILOG_COMPLETE_SSIM_RT_EVENT);
-					sim_rpc_epilog_complete(((sim_job_t*)event->payload)->job_id);
-					event_ended(EPILOG_COMPLETE_SSIM_RT_EVENT);
-				case SIM_RUN_BACKFILL_SCHEDULER:
-					sim_schedule_plugin_run_once();
-				default:
-					break;
+		if(((cur_real_utime-process_create_time_real)>10000000) && (all_done==0) && (proc_rec_count==0)) {
+			//&&
+			//	((now-last_event_usec) > 1000000)
+			// sim_main_thread_sleep_till > 0 i.e. in sleep within slurmctrld_backgroung
+			//     job_sched_cnt can not be reset to 0 and call schedule right now
+
+			// sim_sched_thread_sleep_till > 0 &&
+			// mainthread kick sim_plugin_sched_thread_sleep_till
+
+			// main thread is slepping (run walllimit check) and backfiller is sleeping
+			//debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
+			//debug2("sim_plugin_sched_thread_sleep %ld", sim_sched_thread_sleep_till-get_sim_utime());
+
+
+			skip_usec = skipping_to_utime - now - 10000;
+			if( skip_usec > real_sleep_usec ) {
+				if(skip_usec > 1000000) {
+					skip_usec = 1000000;
 				}
-				//last_event_usec = get_sim_utime();
-
-			}
-			//
-			//jobs_submit_count++;
-		}
-        // run main scheduler if needed
-        sim_sched_agent_loop();
-
-
-		/*check can we skip some time*/
-		int64_t skipping_to_utime = INT64_MAX;
-		int64_t skip_usec;
-		if(sim_main_thread_sleep_till > 0) {
-			skipping_to_utime = sim_main_thread_sleep_till;
-			skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
-			//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
-			skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
-			skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
-			skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
-			skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
-			if(job_sched_cnt>0) {
-				skipping_to_utime = MIN(skipping_to_utime, last_sched_time_slurmctld_background+batch_sched_delay*1000000);
-			}
-
-			now = get_sim_utime();
-
-
-
-			if(((cur_real_utime-process_create_time_real)>10000000) && (all_done==0) && (proc_rec_count==0)) {
-				//&&
-				//	((now-last_event_usec) > 1000000)
-				// sim_main_thread_sleep_till > 0 i.e. in sleep within slurmctrld_backgroung
-				//     job_sched_cnt can not be reset to 0 and call schedule right now
-
-				// sim_sched_thread_sleep_till > 0 &&
-				// mainthread kick sim_plugin_sched_thread_sleep_till
-
-				// main thread is slepping (run walllimit check) and backfiller is sleeping
-				//debug2("sim_main_thread_sleep %ld", sim_main_thread_sleep_till-get_sim_utime());
-				//debug2("sim_plugin_sched_thread_sleep %ld", sim_sched_thread_sleep_till-get_sim_utime());
-
-
-				skip_usec = skipping_to_utime - now - 10000;
-				if( skip_usec > real_sleep_usec ) {
-					if(skip_usec > 1000000) {
-						skip_usec = 1000000;
-					}
-					if(skip_usec > 10000) {
-						//debug2("skipping %" PRId64 " usec %.3f from last event", skip_usec,(now-last_event_usec)/1000000.0);
-						set_sim_time(now + skip_usec);
-						//now = get_sim_utime();
-					}
+				if(skip_usec > 10000) {
+					//debug2("skipping %" PRId64 " usec %.3f from last event", skip_usec,(now-last_event_usec)/1000000.0);
+					set_sim_time(now + skip_usec);
+					//now = get_sim_utime();
 				}
 			}
 		}
+	}
 //		else {
 //			debug2("NotSkipping %d %d %d %d %d %d",
 //					cur_real_utime-process_create_time_real>10000000,
@@ -443,40 +457,31 @@ void *sim_events_thread(void *no_data)
 
 
 
-		/*exit if everything is done*/
+	/*exit if everything is done*/
 
-		if(sim_n_noncyclic_events<=0 &&
-				sim_first_active_job==NULL &&
-				slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0 &&
-				slurm_sim_conf->time_after_all_events_done >=0) {
-			/* no more jobs to submit */
-			_update_diag_job_state_counts();
-			if(slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0){
-				if(all_done==0) {
-					info("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
-					all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done;
-				}
-				now = get_sim_utime();
-				if(all_done - now < 0) {
-					info("All done.");
-					raise(SIGINT);
-				}
-			} else {
-				all_done=0;
+	if(sim_n_noncyclic_events<=0 &&
+			sim_first_active_job==NULL &&
+			slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0 &&
+			slurm_sim_conf->time_after_all_events_done >=0) {
+		/* no more jobs to submit */
+		_update_diag_job_state_counts();
+		if(slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0){
+			if(all_done==0) {
+				info("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
+				all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done;
 			}
-
-
+			now = get_sim_utime();
+			if(all_done - now < 0) {
+				info("All done.");
+				//raise(SIGINT);
+				exit(0);
+			}
+		} else {
+			all_done=0;
 		}
-		/* SIM End */
-	}
-	xfree(stmp1);
-	xfree(stmp2);
-}
 
-void create_sim_events_handler ()
-{
-	slurm_thread_create(&thread_id_event_thread,
-			sim_events_thread, NULL);
+
+	}
 }
 
 /* execure scheduler from schedule_plugin */
@@ -604,8 +609,6 @@ main (int argc, char **argv)
 	print_sim_conf();
 	sim_print_users();
 	sim_print_events();
-
-	create_sim_events_handler();
 
 	int64_t sim_slurmctld_main_start_time2 = get_real_utime();
 	//simulator_start_time += (sim_slurmctld_main_start_time2 - sim_constructor_start_time);

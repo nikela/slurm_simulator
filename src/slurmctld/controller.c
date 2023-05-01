@@ -126,6 +126,10 @@
 #include "src/slurmctld/state_save.h"
 #include "src/slurmctld/trigger_mgr.h"
 
+#ifdef SLURM_SIMULATOR
+#include "../../contribs/sim/sim_time.h"
+#endif
+
 
 #define DEFAULT_DAEMONIZE 1	/* Run as daemon by default if set */
 #define DEFAULT_RECOVER   1	/* Default state recovery on restart
@@ -2164,7 +2168,11 @@ static void *_slurmctld_background(void *no_data)
 			usleep(100000);
 		}
 #else
-		usleep(1000000);
+		// events loop
+		sim_main_thread_sleep_till = get_sim_utime() + 1000000;
+		while(sim_main_thread_sleep_till > get_sim_utime()) {
+			sim_events_loop();
+		}
 #endif
 		//debug3("_slurmctld_background cycle");
 
