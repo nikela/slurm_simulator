@@ -54,6 +54,7 @@ void sim_insert_event2(sim_event_t * event)
         case SIM_TIME_INF:
             break;
         case SIM_RUN_BACKFILL_SCHEDULER:
+		case SIM_PRIORITY_DECAY:
             sim_n_cyclic_events++;
             break;
         default:
@@ -77,6 +78,7 @@ extern sim_event_t * sim_pop_next_event()
         case SIM_TIME_INF:
             break;
         case SIM_RUN_BACKFILL_SCHEDULER:
+		case SIM_PRIORITY_DECAY:
             sim_n_cyclic_events--;
             break;
         default:
@@ -432,7 +434,7 @@ void sim_init_events()
 	// add first node registation
 	sim_event_t * event = xcalloc(1,sizeof(sim_event_t));
 	event->type=SIM_NODE_REGISTRATION;
-	event->when=1;
+	event->when=get_sim_utime();
 	sim_insert_event2(event);
 
 	// read events from simulation events file

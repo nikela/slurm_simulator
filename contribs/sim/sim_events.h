@@ -15,6 +15,9 @@ typedef enum {
 	SIM_EPILOG_COMPLETE,
 	SIM_CANCEL_JOB,
 	SIM_RUN_BACKFILL_SCHEDULER,
+	SIM_ACCOUNTING_UPDATE,
+	SIM_PRIORITY_DECAY,
+	SIM_SET_DB_INDEX,
 } sim_event_type_t;
 
 typedef struct sim_event_submit_batch_job {

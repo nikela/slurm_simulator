@@ -1214,27 +1214,43 @@ static int _decay_apply_new_usage_and_weighted_factors(job_record_t *job_ptr,
 
 static void *_decay_thread(void *no_data)
 {
-	time_t start_time = time(NULL);
-	time_t last_reset = 0, next_reset = 0;
-	double decay_hl = (double) slurm_conf.priority_decay_hl;
-	uint16_t reset_period = slurm_conf.priority_reset_period;
+	static time_t start_time = 0;
+	static time_t last_reset = 0, next_reset = 0;
+	static double decay_hl = 0.0;
+	static uint16_t reset_period = 0;
 
-	time_t now;
-	double run_delta = 0.0, real_decay = 0.0;
-	struct timeval tvnow;
-	struct timespec abs;
+	static time_t now;
+	static double run_delta = 0.0, real_decay = 0.0;
+	static struct timeval tvnow;
+	static struct timespec abs;
 
 	/* Write lock on jobs, read lock on nodes and partitions */
-	slurmctld_lock_t job_write_lock =
+	static slurmctld_lock_t job_write_lock =
 		{ NO_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK, NO_LOCK };
-	assoc_mgr_lock_t locks = { WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK,
+	static assoc_mgr_lock_t locks = { WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK,
 				   NO_LOCK, NO_LOCK, NO_LOCK };
-
+#ifdef SLURM_SIMULATOR
+	static bool first_run=true;
+	if(first_run) {
+		first_run = false;
+		start_time = time(NULL);
+		decay_hl = (double) slurm_conf.priority_decay_hl;
+		reset_period = slurm_conf.priority_reset_period;
+		//slurm_mutex_unlock(&decay_init_mutex);
+	} else {
+		goto while_loop_decay_thread;
+	}
+#else
+	start_time = time(NULL);
+	decay_hl = (double) slurm_conf.priority_decay_hl;
+	reset_period = slurm_conf.priority_reset_period;
 #if HAVE_SYS_PRCTL_H
 	if (prctl(PR_SET_NAME, "decay", NULL, NULL, NULL) < 0) {
 		error("%s: cannot set my name to %s %m", __func__, "decay");
 	}
 #endif
+#endif
+
 	/*
 	 * DECAY_FACTOR DESCRIPTION:
 	 *
@@ -1288,6 +1304,9 @@ static void *_decay_thread(void *no_data)
 
 	_init_grp_used_tres_run_secs(g_last_ran);
 
+#ifdef SLURM_SIMULATOR
+	while_loop_decay_thread:
+#endif
 	while (!plugin_shutdown) {
 		now = start_time;
 
@@ -1401,6 +1420,10 @@ static void *_decay_thread(void *no_data)
 
 		running_decay = 0;
 
+#ifdef SLURM_SIMULATOR
+		slurm_mutex_unlock(&decay_lock);
+		return NULL;
+#endif
 		/* Sleep until the next time. */
 		abs.tv_sec += slurm_conf.priority_calc_period;
 		slurm_cond_timedwait(&decay_cond, &decay_lock, &abs);

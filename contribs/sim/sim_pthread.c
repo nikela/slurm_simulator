@@ -27,6 +27,18 @@ int64_t sim_plugin_backfill_thread_sleep_till = 0;
 int64_t sim_thread_priority_multifactor_sleep_till = INT64_MAX;
 int64_t sim_agent_init_sleep_till = INT64_MAX;
 
+int (*sim_slurmctrld_pthread_create_ref)(pthread_t *newthread,
+										const pthread_attr_t *attr,
+										void *(*start_routine) (void *),
+										void *arg,
+										const char *id,
+										const char *func,
+										const char *sarg,
+										const char *funccall,
+										const char *filename,
+										const char *note,
+										const int line) = NULL;
+
 int sim_pthread_create (pthread_t *newthread,
 		const pthread_attr_t *attr,
 		void *(*start_routine) (void *),
@@ -39,74 +51,14 @@ int sim_pthread_create (pthread_t *newthread,
 		const char *note,
 		const int line)
 {
-	//slurmctld: debug:  id: '&thread_id_event_thread'
-	//slurmctld: debug:  func: 'sim_events_thread'
-	//slurmctld: debug:  id: '&backfill_thread'
-	//slurmctld: debug:  func: 'backfill_agent
-
-	// @TODO check that 'id' do not change and they are unique across slurm
-	if(xstrcmp("slurmctld", __progname) == 0) {
-		if (xstrcmp("&slurmctld_config.thread_id_rpc", id) == 0) {
-			debug("sim_pthread_create: %s ... start.", id);
-		} else if (xstrcmp("&slurmctld_config.thread_id_sig", id) == 0) {
-			debug("sim_pthread_create: %s ... skip.", id);
-			return 0;
-		} else if (xstrcmp("&slurmctld_config.thread_id_save", id) == 0) {
-			debug("sim_pthread_create: %s ... start.", id);
-			return 0;
-		} else if (xstrcmp("&slurmctld_config.thread_id_power", id) == 0) {
-			debug("sim_pthread_create: %s ... skip.", id);
-			return 0;
-		} else if ((xstrcmp("thread_id", id) == 0) && (xstrcmp("_init_power_save", func) == 0)) {
-			debug("sim_pthread_create: %s %s ... skip.", id,func);
-			return 0;
-		} else if (xstrcmp("&slurmctld_config.thread_id_purge_files", id) == 0) {
-			debug("sim_pthread_create: %s ... skip.", id);
-			return 0;
-		} else if (xstrcmp("&thread_id_sched", id) == 0 && xstrcmp("main_sched_init", funccall) == 0) {
-			debug("sim_pthread_create: %s ... skip.", id);
-			return 0;
-		} else if (xstrcmp("&thread_wdog", id) == 0) {
-			debug("sim_pthread_create: %s ... skip.", id);
-			//return 0;
-		}  else if (xstrcmp("_service_connection", func) == 0) {
-			debug("sim_pthread_create: %s ... .", func);
-			//return 0;
-		} else if (endswith(filename, "fed_mgr.c") == 0) {
-			debug("sim_pthread_create: %s ... .", "fed_mgr.c");
-			//return 0;
-		} else {
-			debug("sim_pthread_create_passed: id=%s func=%s note=%s file=%s line=%d",id,func,note,filename,line);
-		}
+	if(sim_slurmctrld_pthread_create_ref!=NULL) {
+		return (*sim_slurmctrld_pthread_create_ref)(newthread,attr,start_routine,arg,id,func,sarg,funccall,filename,note,line);
+	} else {
+		int err = pthread_create(newthread, attr, start_routine, arg);
+		debug2("sim_pthread_create_all: id=%s func=%s arg=%s funccall=%s note=%s file=%s thread=%lu threadcall=%lu",
+			   id,func,sarg,funccall,note,filename, *newthread, pthread_self());
+		return err;
 	}
-	//debug("id: '%s'", id);
-	//debug("func: '%s'", func);
-
-
-	int err = pthread_create(newthread, attr, start_routine, arg);
-	debug2("sim_pthread_create_all: id=%s func=%s arg=%s funccall=%s note=%s file=%s thread=%lu threadcall=%lu",
-			id,func,sarg,funccall,note,filename, *newthread, pthread_self());
-
-
-	if (xstrcmp("&backfill_thread", id) == 0) {
-		debug("thread up: backfill_thread");
-		sim_plugin_backfill_thread=*newthread;
-	} else if (xstrcmp("&builtin_thread", id) == 0) {
-		debug("thread up: builtin_thread");
-		sim_plugin_backfill_thread = *newthread;
-	} else if (xstrcmp("&thread_id_sched", id) == 0) {
-		debug("thread up: thread_id_sched_thread");
-		sim_sched_thread = *newthread;
-	} else if (xstrcmp("&decay_handler_thread ", id) == 0) {
-		debug("thread up: decay_handler_thread ");
-		sim_thread_priority_multifactor = *newthread;
-		sim_thread_priority_multifactor_sleep_till = 0;
-	} else if (xstrcmp("agent_init", funccall) == 0 && xstrcmp("_agent_init", func) == 0) {
-		debug("thread up: agent_init ");
-		sim_agent_init = *newthread;
-		sim_agent_init_sleep_till = 0;
-	}
-	return err;
 }
 
 
@@ -133,6 +85,12 @@ int slurm_cond_signal0 (pthread_cond_t * cond,
 	return err;
 }
 
+/* reference to sim_slurmctrld_cond_broadcast */
+void (*sim_slurmctrld_cond_broadcast_ref)(pthread_cond_t * cond,
+								   const char *scond,
+								   const char *filename,
+								   const int line,
+								   const char *func)=NULL;
 
 int slurm_cond_broadcast0 (pthread_cond_t * cond,
 		const char *scond,
@@ -159,6 +117,10 @@ int slurm_cond_broadcast0 (pthread_cond_t * cond,
 		sim_sched_thread_cond_wait_till=0;//i.e. sched should start any time now
 	}
 
+	if(sim_slurmctrld_cond_broadcast_ref!=NULL){
+		// if in slurmctrkd call sim_slurmctrld_cond_broadcast to trigger sim events
+		(*sim_slurmctrld_cond_broadcast_ref)(cond,scond,filename,line,func);
+	}
 
 	int err = pthread_cond_broadcast(cond);
 	if (err) {
@@ -208,6 +170,11 @@ int slurm_cond_wait0 (pthread_cond_t * cond, pthread_mutex_t * mutex,
 	int sim_sched_requests_old;
 	//debug3("slurm_cond_wait0 cond=%s func=%s file=%s thread=%lu",scond,func,filename, pthread_self());
 	int64_t sim_utime = get_sim_utime();
+
+    if (xstrcmp("&decay_init_cond", scond) == 0 && xstrcmp("init", func) == 0) {
+		return 0;
+	};
+
 	if( pthread_self()==sim_sched_thread ) {
 		slurm_mutex_unlock(mutex);
         sim_sched_requests_old=sim_sched_requests;
