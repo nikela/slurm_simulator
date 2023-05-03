@@ -411,7 +411,7 @@ extern int sim_pthread_create (pthread_t *newthread,
 			fatal("%s: pthread_attr_setdetachstate %m",	\
 			      __func__);				\
 		} 						\
-		err = sim_pthread_create(&id_local, &attr, func, arg, "id_local", #arg, #func, __func__,__FILE__,"detached",__LINE__);		\
+		err = sim_pthread_create(&id_local, &attr, func, arg, "id_local", #func, #arg, __func__,__FILE__,"detached",__LINE__);		\
 		if (err) {						\
 			errno = err;					\
 			fatal("%s: pthread_create error %m", __func__);	\
