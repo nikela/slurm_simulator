@@ -26,6 +26,7 @@ extern void sim_events_loop();
 #include "../../contribs/sim/sim_rt_events.h"
 #include "../../contribs/sim/sim.h"
 #include "../../contribs/sim/slurmctld_sim.h"
+#include "../../contribs/sim/sim_comm.h"
 
 #include <inttypes.h>
 #include <signal.h>
@@ -75,6 +76,7 @@ int sim_slurmctrld_pthread_create (pthread_t *newthread,
 	// @TODO check that 'id' do not change and they are unique across slurm
 	if (xstrcmp("&slurmctld_config.thread_id_rpc", id) == 0) {
 		debug("sim_pthread_create: %s ... start.", id);
+		//return 0;
 	} else if (xstrcmp("&slurmctld_config.thread_id_sig", id) == 0) {
 		debug("sim_pthread_create: %s ... skip.", id);
 		return 0;
@@ -102,6 +104,19 @@ int sim_slurmctrld_pthread_create (pthread_t *newthread,
 		sim_decay_thread_ref = start_routine;
 		sim_insert_event( get_sim_utime(),SIM_PRIORITY_DECAY,NULL);
 		return 0;
+	} else if (xstrcmp("&db_inx_handler_thread", id) == 0 && xstrcmp("_set_db_inx_thread", func) == 0) {
+		debug("sim_pthread_create: %s ... skip.", id);
+		sim_set_db_inx_thread_ref = start_routine;
+		sim_insert_event( get_sim_utime(),SIM_SET_DB_INDEX,NULL);
+		return 0;
+	} else if (xstrcmp("&agent_tid", id) == 0 && xstrcmp("_agent", func) == 0 && xstrcmp("_create_agent", funccall) == 0) {
+		//debug("sim_pthread_create: %s ... skip.", id);
+		//slurmdb_agent
+		//return 0;
+	} else if (xstrcmp("id_local", id) == 0 && xstrcmp("_agent_init", func) == 0 && xstrcmp("agent_init", funccall) == 0) {
+		//debug("sim_pthread_create: %s ... skip.", id);
+		//slurmdb_agent
+		//return 0;
 	} else if (xstrcmp("&thread_wdog", id) == 0) {
 		debug("sim_pthread_create: %s ... skip.", id);
 		//return 0;
@@ -521,6 +536,12 @@ void sim_events_loop()
 				}
 				sim_insert_event(event->when + slurm_conf.priority_calc_period*USEC_IN_SEC, SIM_PRIORITY_DECAY,NULL);
 				break;
+			case SIM_SET_DB_INDEX:
+				if(sim_set_db_inx_thread_ref!=NULL) {
+					(*sim_set_db_inx_thread_ref)(NULL);
+				}
+				sim_insert_event(event->when + 5*USEC_IN_SEC, SIM_SET_DB_INDEX,NULL);
+				break;
 			default:
 				break;
 			}
@@ -539,11 +560,11 @@ void sim_events_loop()
 	int64_t skip_usec;
 	if(sim_main_thread_sleep_till > 0) {
 		skipping_to_utime = sim_main_thread_sleep_till;
-		skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
+		//skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
 		//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 		skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
-		skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
-		skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
+		//skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
+		//skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
 		skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 		if(job_sched_cnt>0) {
 			skipping_to_utime = MIN(skipping_to_utime, last_sched_time_slurmctld_background+batch_sched_delay*1000000);

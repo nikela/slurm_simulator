@@ -55,6 +55,7 @@ void sim_insert_event2(sim_event_t * event)
             break;
         case SIM_RUN_BACKFILL_SCHEDULER:
 		case SIM_PRIORITY_DECAY:
+		case SIM_SET_DB_INDEX:
             sim_n_cyclic_events++;
             break;
         default:
@@ -79,6 +80,7 @@ extern sim_event_t * sim_pop_next_event()
             break;
         case SIM_RUN_BACKFILL_SCHEDULER:
 		case SIM_PRIORITY_DECAY:
+		case SIM_SET_DB_INDEX:
             sim_n_cyclic_events--;
             break;
         default:

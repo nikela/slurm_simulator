@@ -326,19 +326,34 @@ static int _reset_db_inx_for_each(void *x, void *arg)
 
 static void *_set_db_inx_thread(void *no_data)
 {
-	job_record_t *job_ptr = NULL;
-	ListIterator itr;
-	struct timeval tvnow;
-	struct timespec abs;
+	static job_record_t *job_ptr = NULL;
+	static ListIterator itr;
+	static struct timeval tvnow;
+	static struct timespec abs;
 
 	/* Read lock on jobs */
-	slurmctld_lock_t job_read_lock =
+	static slurmctld_lock_t job_read_lock =
 		{ NO_LOCK, READ_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 	/* Write lock on jobs */
-	slurmctld_lock_t job_write_lock =
+	static slurmctld_lock_t job_write_lock =
 		{ NO_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 	/* DEF_TIMERS; */
 
+	static List local_job_list;
+
+#ifdef SLURM_SIMULATOR
+	static bool first_run=true;
+	if(first_run) {
+		first_run = false;
+		/*
+		 * We only want to destory the pointer here not the contents so call
+		 * special function _partial_destroy_dbd_job_start.
+		 */
+		local_job_list = list_create(_partial_destroy_dbd_job_start);
+	} else {
+		goto while_set_db_inx_thread;
+	}
+#else
 	/*
 	 * We only want to destory the pointer here not the contents so call
 	 * special function _partial_destroy_dbd_job_start.
@@ -352,6 +367,11 @@ static void *_set_db_inx_thread(void *no_data)
 #endif
 	(void) pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	(void) pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+#endif
+
+#ifdef SLURM_SIMULATOR
+	while_set_db_inx_thread:
+#endif
 
 	while (!plugin_shutdown) {
 		/* START_TIMER; */
@@ -493,6 +513,11 @@ static void *_set_db_inx_thread(void *no_data)
 		   it doesn't have to find db_indexs of jobs that
 		   haven't had the start rpc come through.
 		*/
+
+#ifdef SLURM_SIMULATOR
+		slurm_mutex_unlock(&db_inx_lock);
+		return NULL;
+#endif
 
 		gettimeofday(&tvnow, NULL);
 		abs.tv_sec = tvnow.tv_sec + 5;

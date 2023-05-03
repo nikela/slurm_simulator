@@ -32,6 +32,8 @@ int64_t simulator_start_time=0;
 int64_t sim_constructor_start_time=0;
 
 
+void * (*sim_set_db_inx_thread_ref)(void *no_data) = NULL;
+
 //extern void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time_to_real);
 //extern int sim_read_users(void);
 //extern int sim_print_users(void);
