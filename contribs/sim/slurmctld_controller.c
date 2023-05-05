@@ -104,9 +104,9 @@ int sim_slurmctrld_pthread_create (pthread_t *newthread,
 		*newthread = 1;
 		return 0;
 	} else if (xstrcmp("id_local", id) == 0 && xstrcmp("_agent_init", func) == 0 && xstrcmp("agent_init", funccall) == 0) {
-		//debug("sim_pthread_create: %s ... skip.", id);
-		//slurmdb_agent
-		//return 0;
+		debug("sim_pthread_create: %s ... skip.", id);
+		//slurmctrld::agent
+		return 0;
 	} else if (xstrcmp("&thread_wdog", id) == 0) {
 		debug("sim_pthread_create: %s ... skip.", id);
 		//return 0;

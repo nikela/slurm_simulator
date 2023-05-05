@@ -1759,6 +1759,10 @@ next:
  */
 void agent_queue_request(agent_arg_t *agent_arg_ptr)
 {
+#ifdef SLURM_SIMULATOR
+	fatal("SIM:Not implemented agent request");
+#endif
+
 	queued_request_t *queued_req_ptr = NULL;
 
 	if ((AGENT_THREAD_COUNT + 2) >= MAX_SERVER_THREADS)
