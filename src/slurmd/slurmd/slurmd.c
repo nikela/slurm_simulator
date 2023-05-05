@@ -123,6 +123,10 @@
 #include "src/slurmd/slurmd/req.h"
 #include "src/slurmd/slurmd/slurmd.h"
 
+#ifdef SLURM_SIMULATOR
+#include "../../contribs/sim/sim_comm.h"
+#endif
+
 #define MAX_THREADS		256
 
 #define _free_and_set(__dst, __src)		\

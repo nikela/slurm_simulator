@@ -16,6 +16,7 @@
 #include "../../contribs/sim/sim_jobs.h"
 #include "../../contribs/sim/sim_users.h"
 #include "../../contribs/sim/sim.h"
+#include "../../contribs/sim/sim_comm.h"
 
 /* Shared Memory */
 
@@ -35,12 +36,19 @@ int64_t sim_constructor_start_time=0;
 int64_t sim_slurmdbd_agent_sleep_till = 0;
 
 
+slurm_msg_t * sim_request_msg = NULL;;
+slurm_msg_t * sim_response_msg = NULL;
+
+
+
 void * (*sim_set_db_inx_thread_ref)(void *no_data) = NULL;
 void * (*sim_decay_thread_ref)(void *no_data)=NULL;
 void * (*sim_slurmdbd_agent_ref)(void *no_data)=NULL;
 
 /* reference to sched_plugin */
 uint64_t (*sim_backfill_agent_ref)(void)=NULL;
+
+void (*sim_slurmctld_req_ref)(slurm_msg_t *msg)=NULL;
 
 //extern void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time_to_real);
 //extern int sim_read_users(void);

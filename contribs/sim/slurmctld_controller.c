@@ -734,6 +734,7 @@ main (int argc, char **argv)
 
 
 	sim_init_slurmd();
+	sim_slurmctld_req_ref = slurmctld_req;
 
 
 	// correct for simulator init time

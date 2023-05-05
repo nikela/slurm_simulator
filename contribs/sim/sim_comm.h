@@ -1,6 +1,14 @@
 #ifndef _SIM_COMM_H
 #define _SIM_COMM_H
 
+#include <stdint.h>
+
+typedef struct slurm_msg slurm_msg_t;
+
+extern slurm_msg_t * sim_request_msg;
+extern slurm_msg_t * sim_response_msg;
+
+
 // different variables and routines declarations for
 // tricking communications within slurm
 extern int (*sim_slurmctrld_pthread_create_ref)(pthread_t *newthread,
@@ -29,5 +37,7 @@ extern void * (*sim_decay_thread_ref)(void *no_data);
 extern uint64_t (*sim_backfill_agent_ref)(void);
 
 extern int64_t sim_slurmdbd_agent_sleep_till;
+
+extern void (*sim_slurmctld_req_ref)(slurm_msg_t *msg);
 
 #endif

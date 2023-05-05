@@ -80,6 +80,10 @@
 
 #include "src/slurmdbd/read_config.h"
 
+#ifdef SLURM_SIMULATOR
+#include "../../contribs/sim/sim_comm.h"
+#endif
+
 typedef struct {
 	uint32_t control_cnt;
 	slurm_addr_t *controller_addr;
@@ -1992,7 +1996,20 @@ extern int slurm_send_node_msg(int fd, slurm_msg_t *msg)
 {
 	msg_bufs_t buffers = { 0 };
 	int rc;
-
+#ifdef SLURM_SIMULATOR
+	if(sim_slurmctld_req_ref!=NULL && sim_request_msg !=NULL && sim_response_msg !=NULL) {
+		switch(sim_request_msg->msg_type) {
+			case  MESSAGE_NODE_REGISTRATION_STATUS:
+				sim_response_msg->msg_type  = msg->msg_type;
+				memcpy(sim_response_msg->data, msg->data, msg->data_size);
+				sim_response_msg->data_size = msg->data_size;
+				return SLURM_SUCCESS;
+				break;
+			default:
+				break;
+		}
+	}
+#endif
 	if (msg->conn) {
 		persist_msg_t persist_msg;
 		buf_t *buffer;
@@ -2326,6 +2343,25 @@ extern int slurm_send_recv_msg(int fd, slurm_msg_t *req,
 		fd = req->conn->fd;
 		resp->conn = req->conn;
 	}
+#ifdef SLURM_SIMULATOR
+	if(sim_slurmctld_req_ref!=NULL) {
+		switch(req->msg_type) {
+			case  MESSAGE_NODE_REGISTRATION_STATUS:
+				sim_request_msg = req;
+				sim_response_msg = resp;
+				sim_request_msg->auth_uid_set = true;
+				sim_request_msg->auth_uid = slurm_conf.slurm_user_id;
+				sim_request_msg->protocol_version = SLURM_PROTOCOL_VERSION;
+				(*sim_slurmctld_req_ref)(req);
+				sim_request_msg = NULL;
+				sim_response_msg = NULL;
+				return SLURM_SUCCESS;
+				break;
+			default:
+				break;
+		}
+	}
+#endif
 
 	if (slurm_send_node_msg(fd, req) >= 0) {
 		/* no need to adjust and timeouts here since we are not
