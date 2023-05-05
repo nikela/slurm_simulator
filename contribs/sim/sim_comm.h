@@ -3,7 +3,31 @@
 
 // different variables and routines declarations for
 // tricking communications within slurm
+extern int (*sim_slurmctrld_pthread_create_ref)(pthread_t *newthread,
+												const pthread_attr_t *attr,
+												void *(*start_routine) (void *),
+												void *arg,
+												const char *id,
+												const char *func,
+												const char *sarg,
+												const char *funccall,
+												const char *filename,
+												const char *note,
+												const int line);
+
+extern void (*sim_slurmctrld_cond_broadcast_ref)(pthread_cond_t * cond,
+												 const char *scond,
+												 const char *filename,
+												 const int line,
+												 const char *func);
+
 
 extern void * (*sim_set_db_inx_thread_ref)(void *no_data);
+extern void * (*sim_slurmdbd_agent_ref)(void *no_data);
+extern void * (*sim_decay_thread_ref)(void *no_data);
+
+extern uint64_t (*sim_backfill_agent_ref)(void);
+
+extern int64_t sim_slurmdbd_agent_sleep_till;
 
 #endif

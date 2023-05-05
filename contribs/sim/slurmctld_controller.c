@@ -42,19 +42,7 @@ extern bool sim_job_epilog_complete(uint32_t job_id, char *node_name,
                                     uint32_t return_code);
 extern void sim_notify_slurmctld_nodes();
 
-void * (*sim_decay_thread_ref)(void *no_data)=NULL;
 
-extern int (*sim_slurmctrld_pthread_create_ref)(pthread_t *newthread,
-								   const pthread_attr_t *attr,
-								   void *(*start_routine) (void *),
-								   void *arg,
-								   const char *id,
-								   const char *func,
-								   const char *sarg,
-								   const char *funccall,
-								   const char *filename,
-								   const char *note,
-								   const int line);
 
 int sim_slurmctrld_pthread_create (pthread_t *newthread,
 						const pthread_attr_t *attr,
@@ -110,9 +98,11 @@ int sim_slurmctrld_pthread_create (pthread_t *newthread,
 		sim_insert_event( get_sim_utime(),SIM_SET_DB_INDEX,NULL);
 		return 0;
 	} else if (xstrcmp("&agent_tid", id) == 0 && xstrcmp("_agent", func) == 0 && xstrcmp("_create_agent", funccall) == 0) {
-		//debug("sim_pthread_create: %s ... skip.", id);
+		debug("sim_pthread_create: %s ... skip.", id);
 		//slurmdb_agent
-		//return 0;
+		sim_slurmdbd_agent_ref = start_routine;
+		*newthread = 1;
+		return 0;
 	} else if (xstrcmp("id_local", id) == 0 && xstrcmp("_agent_init", func) == 0 && xstrcmp("agent_init", funccall) == 0) {
 		//debug("sim_pthread_create: %s ... skip.", id);
 		//slurmdb_agent
@@ -158,16 +148,6 @@ int sim_slurmctrld_pthread_create (pthread_t *newthread,
 	}
 	return err;
 }
-
-
-/* reference to sched_plugin */
-uint64_t (*sim_backfill_agent_ref)(void)=NULL;
-
-extern void (*sim_slurmctrld_cond_broadcast_ref)(pthread_cond_t * cond,
-										  const char *scond,
-										  const char *filename,
-										  const int line,
-										  const char *func);
 
 void sim_slurmctrld_cond_broadcast(pthread_cond_t * cond,
 		const char *scond,
@@ -494,8 +474,8 @@ void sim_events_loop()
 	}
 
 	/* SIM Start */
-	if(sim_next_event->when - now < 0) {
-		while(sim_next_event->when - now < 0) {
+	if(sim_next_event->when <= now) {
+		while(sim_next_event->when <= now) {
 			event = sim_pop_next_event();
 
 			sim_print_event(event);
@@ -551,6 +531,12 @@ void sim_events_loop()
 		//
 		//jobs_submit_count++;
 	}
+	//
+	if(sim_slurmdbd_agent_sleep_till <= now) {
+		if(sim_slurmdbd_agent_ref!=NULL) {
+			(*sim_slurmdbd_agent_ref)(NULL);
+		}
+	}
 	// run main scheduler if needed
 	sim_sched_agent_loop();
 
@@ -563,6 +549,7 @@ void sim_events_loop()
 		//skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
 		//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 		skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
+		skipping_to_utime = MIN(skipping_to_utime, sim_slurmdbd_agent_sleep_till);
 		//skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
 		//skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
 		skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);

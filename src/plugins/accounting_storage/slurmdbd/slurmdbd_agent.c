@@ -45,6 +45,12 @@
 
 #include "slurmdbd_agent.h"
 
+#ifdef SLURM_SIMULATOR
+#include "../../contribs/sim/sim_time.h"
+#include "../../contribs/sim/sim.h"
+#include "../../contribs/sim/sim_comm.h"
+#endif
+
 enum {
 	MAX_DBD_ACTION_DISCARD,
 	MAX_DBD_ACTION_EXIT
@@ -583,14 +589,23 @@ static void _print_agent_list_msg_types(void)
 
 static void *_agent(void *x)
 {
-	int rc;
-	uint32_t cnt;
-	buf_t *buffer;
-	struct timespec abs_time;
+	static int rc;
+	static uint32_t cnt;
+	static buf_t *buffer;
+	static struct timespec abs_time;
 	static time_t fail_time = 0;
-	persist_msg_t list_req = {0};
-	dbd_list_msg_t list_msg;
-	DEF_TIMERS;
+	static persist_msg_t list_req = {0};
+	static dbd_list_msg_t list_msg;
+	static DEF_TIMERS;
+
+#ifdef SLURM_SIMULATOR
+	static bool first_run=true;
+	if(first_run) {
+		first_run = false;
+	} else {
+		goto while_slurmdbd_agent_thread;
+	}
+#endif
 
 	slurm_mutex_lock(&agent_lock);
 	agent_running = true;
@@ -605,6 +620,7 @@ static void *_agent(void *x)
 		 list_count(agent_list),
 		 slurmdbd_msg_type_2_str(list_req.msg_type, 1));
 
+while_slurmdbd_agent_thread:
 	while (*slurmdbd_conn->shutdown == 0) {
 		slurm_mutex_lock(&slurmdbd_lock);
 		if (halt_agent) {
@@ -636,6 +652,11 @@ static void *_agent(void *x)
 			END_TIMER2("slurmdbd agent: sleep");
 			log_flag(AGENT, "slurmdbd agent sleeping with agent_count=%d",
 				 list_count(agent_list));
+#ifdef SLURM_SIMULATOR
+			sim_slurmdbd_agent_sleep_till = get_sim_utime() + 10*USEC_IN_SEC;
+			slurm_mutex_unlock(&agent_lock);
+			return NULL;
+#endif
 			abs_time.tv_sec  = time(NULL) + 10;
 			abs_time.tv_nsec = 0;
 			slurm_cond_timedwait(&agent_cond, &agent_lock,
@@ -944,6 +965,9 @@ extern int slurmdbd_agent_send(uint16_t rpc_version, persist_msg_t *req)
 		rc = SLURM_ERROR;
 	}
 
+#ifdef SLURM_SIMULATOR
+	sim_slurmdbd_agent_sleep_till = get_sim_utime();
+#endif
 	slurm_cond_broadcast(&agent_cond);
 	slurm_mutex_unlock(&agent_lock);
 	return rc;
