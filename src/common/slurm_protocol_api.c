@@ -2005,6 +2005,12 @@ extern int slurm_send_node_msg(int fd, slurm_msg_t *msg)
 				sim_response_msg->data_size = msg->data_size;
 				return SLURM_SUCCESS;
 				break;
+			case  REQUEST_SUBMIT_BATCH_JOB:
+				sim_response_msg->msg_type  = msg->msg_type;
+				memcpy(sim_response_msg->data, msg->data, msg->data_size);
+				sim_response_msg->data_size = msg->data_size;
+				return SLURM_SUCCESS;
+				break;
 			default:
 				break;
 		}
@@ -2345,18 +2351,68 @@ extern int slurm_send_recv_msg(int fd, slurm_msg_t *req,
 	}
 #ifdef SLURM_SIMULATOR
 	if(sim_slurmctld_req_ref!=NULL) {
+		job_desc_msg_t *job_desc_ref=NULL;
+		job_desc_msg_t *job_desc=NULL;
 		switch(req->msg_type) {
 			case  MESSAGE_NODE_REGISTRATION_STATUS:
 				sim_request_msg = req;
 				sim_response_msg = resp;
-				sim_request_msg->auth_uid_set = true;
-				sim_request_msg->auth_uid = slurm_conf.slurm_user_id;
-				sim_request_msg->protocol_version = SLURM_PROTOCOL_VERSION;
+				req->auth_uid_set = true;
+				req->auth_uid = slurm_conf.slurm_user_id;
+				req->protocol_version = SLURM_PROTOCOL_VERSION;
 				(*sim_slurmctld_req_ref)(req);
 				sim_request_msg = NULL;
 				sim_response_msg = NULL;
 				return SLURM_SUCCESS;
 				break;
+			case  REQUEST_SUBMIT_BATCH_JOB:
+				sim_request_msg = req;
+				sim_response_msg = resp;
+
+				job_desc_ref = req->data;
+				//pack and unpack data to create a separate copy
+				buf_t *buffer = init_buf(BUF_SIZE);
+				pack_msg(req, buffer);
+				//rewind
+				buffer->processed = 0;
+				req->data = NULL;
+				unpack_msg(req,  buffer);
+				job_desc = req->data;
+
+				if (req->flags & SLURM_GLOBAL_AUTH_KEY) {
+					req->auth_cred  = auth_g_create(req->auth_index, _global_auth_key(),job_desc->user_id,NULL,0);
+				} else {
+					req->auth_cred = auth_g_create(req->auth_index, slurm_conf.authinfo,job_desc->user_id,NULL,0);
+					auth_g_verify(req->auth_cred, slurm_conf.authinfo);
+				}
+				//req->auth_cred->ver =
+				req->auth_uid_set = true;
+				req->auth_uid = job_desc->user_id;//slurm_conf.slurm_user_id;
+				req->protocol_version = SLURM_PROTOCOL_VERSION;
+
+				(*sim_slurmctld_req_ref)(req);
+
+				// point back to old desc
+				req->data = job_desc_ref;
+
+				FREE_NULL_BUFFER(buffer);
+
+				sim_request_msg = NULL;
+				sim_response_msg = NULL;
+				return SLURM_SUCCESS;
+				break;
+
+				//			req_msg.msg_type = REQUEST_SUBMIT_BATCH_JOB;
+//			req_msg.data     = desc;
+//			req_msg.conn     = NULL;
+//			//if (req_msg.flags & SLURM_GLOBAL_AUTH_KEY) {
+//			//	auth_cred = auth_g_create(req_msg.auth_index, _global_auth_key());
+//			//} else {
+//			req_msg.auth_cred = auth_g_create(req_msg.auth_index, slurm_conf.authinfo);
+//			auth_g_verify(req_msg.auth_cred, slurm_conf.authinfo);
+//			//}
+//			req_msg.auth_uid = auth_g_get_uid(req_msg.auth_cred);
+
 			default:
 				break;
 		}
