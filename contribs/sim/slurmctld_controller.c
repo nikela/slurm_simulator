@@ -64,7 +64,7 @@ int sim_slurmctrld_pthread_create (pthread_t *newthread,
 	// @TODO check that 'id' do not change and they are unique across slurm
 	if (xstrcmp("&slurmctld_config.thread_id_rpc", id) == 0) {
 		debug("sim_pthread_create: %s ... start.", id);
-		//return 0;
+		return 0;
 	} else if (xstrcmp("&slurmctld_config.thread_id_sig", id) == 0) {
 		debug("sim_pthread_create: %s ... skip.", id);
 		return 0;

@@ -2528,6 +2528,14 @@ extern int slurm_send_recv_controller_msg(slurm_msg_t * request_msg,
 	slurmdb_cluster_rec_t *save_comm_cluster_rec = comm_cluster_rec;
 	int ratelimited = 0;
 
+#ifdef SLURM_SIMULATOR
+	if(request_msg->msg_type == MESSAGE_NODE_REGISTRATION_STATUS || request_msg->msg_type == REQUEST_SUBMIT_BATCH_JOB){
+		conf = slurm_conf_lock();
+		slurmctld_timeout = conf->slurmctld_timeout;
+		slurm_conf_unlock();
+		return slurm_send_recv_msg(fd, request_msg, response_msg, slurmctld_timeout);
+	}
+#endif
 	/*
 	 * Just in case the caller didn't initialize his slurm_msg_t, and
 	 * since we KNOW that we are only sending to one node (the controller),
