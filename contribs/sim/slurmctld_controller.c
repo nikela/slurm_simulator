@@ -451,7 +451,7 @@ void sim_events_first_loop()
 	/* add initial events */
 	sim_schedule_plugin_run_once();
 }
-
+extern int get_sched_requests();
 int64_t sim_events_loop()
 {
 	static bool first_run = true;
@@ -621,7 +621,8 @@ int64_t sim_events_loop()
 				count_sim_slurmdbd_agent_sleep_till++;
 			}
 		}
-		if(sim_sched_thread_cond_wait_till < skipping_to_utime) {
+		if(get_sched_requests() > 0 && sim_sched_thread_cond_wait_till < skipping_to_utime) {
+			// if not request skip to next other event
 			skipping_to_utime = sim_sched_thread_cond_wait_till;
 			if(sim_sched_thread_cond_wait_till < now) {
 				count_sim_sched_thread_cond_wait_till++;

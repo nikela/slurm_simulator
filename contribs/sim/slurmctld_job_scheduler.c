@@ -10,6 +10,11 @@
 #include "../../contribs/sim/sim.h"
 #include "../../contribs/sim/slurmctld_sim.h"
 
+extern int get_sched_requests()
+{
+	return sched_requests;
+}
+
 /* simulate a single loop of _sched_agent
  * return true if run scheduler*/
 extern bool sim_sched_agent_loop(int64_t now64) {
