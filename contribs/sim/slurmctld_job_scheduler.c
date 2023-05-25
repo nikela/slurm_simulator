@@ -12,7 +12,7 @@
 
 /* simulate a single loop of _sched_agent
  * return true if run scheduler*/
-extern bool sim_sched_agent_loop() {
+extern bool sim_sched_agent_loop(int64_t now64) {
 	long delta_t;
 	struct timeval now;
 	int job_cnt;
@@ -31,6 +31,12 @@ extern bool sim_sched_agent_loop() {
 
 	if (slurmctld_config.shutdown_time) {
 		//slurm_mutex_unlock(&sched_mutex);
+		return false;
+	}
+	if (!sched_requests) {
+		return false;
+	}
+	if (sim_sched_thread_cond_wait_till > now64) {
 		return false;
 	}
 

@@ -63,11 +63,18 @@ time_t __wrap_time(time_t *t)
 /* return real time in microseconds */
 int64_t get_real_utime()
 {
-	struct timeval cur_real_time;
-    __real_gettimeofday(&cur_real_time, NULL);
+	//struct timeval cur_real_time;
+	struct timespec cur_real_timespec;
 
-	int64_t cur_real_utime = (int64_t) (cur_real_time.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_time.tv_usec);
-	return cur_real_utime;
+    //__real_gettimeofday(&cur_real_time, NULL);
+
+	clock_gettime(CLOCK_REALTIME, &cur_real_timespec);
+
+	//int64_t cur_real_utime = (int64_t) (cur_real_time.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_time.tv_usec);
+	int64_t cur_real_utime2 = (int64_t) (cur_real_timespec.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_timespec.tv_nsec/1000);
+	//int64_t dt = cur_real_utime - cur_real_utime2;
+
+	return cur_real_utime2;
 }
 
 /* return simulated time in microseconds */

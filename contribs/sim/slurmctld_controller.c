@@ -6,13 +6,14 @@
 extern int64_t sim_main_thread_sleep_till;
 extern int64_t sim_sched_thread_cond_wait_till;
 extern int64_t sim_plugin_backfill_thread_sleep_till;
+int64_t sim_next_timelimit_time;
 int64_t last_sched_time_slurmctld_background;
 
 #include <pthread.h>
 int proc_rec_count=0;
 pthread_mutex_t proc_rec_count_lock;
 
-extern void sim_events_loop();
+extern int64_t sim_events_loop();
 extern void sim_slurmctld_event_main_loop();
 
 #define main slurmctld_main
@@ -451,12 +452,25 @@ void sim_events_first_loop()
 	sim_schedule_plugin_run_once();
 }
 
-void sim_events_loop()
+int64_t sim_events_loop()
 {
 	static bool first_run = true;
 	static int recursion_depth = 0;
+	static int64_t time_skipped = 0;
+	static int64_t count = 0;
+	static int64_t count_noskip = 0;
+	static int64_t count_skip = 0;
+
+	static int64_t count_next_event=0;
+	static int64_t count_sim_plugin_backfill_thread_sleep_till=0;
+	static int64_t count_sim_slurmdbd_agent_sleep_till=0;
+	static int64_t count_sim_sched_thread_cond_wait_till=0;
+	static int64_t count_next_sched_time_slurmctld_background=0;
+
+	int64_t skip_usec;
 
 	recursion_depth++;
+	count++;
 
 	if(first_run) {
 		sim_events_first_loop();
@@ -467,12 +481,12 @@ void sim_events_loop()
 
 	static int scaling_on=0;
 	int64_t now;
-	int64_t cur_real_utime;
+	//int64_t cur_real_utime;
 
 	now = get_sim_utime();
-	cur_real_utime = get_real_utime();
+	//cur_real_utime = get_real_utime();
 	//start_time = now;
-	if(scaling_on==0 && cur_real_utime-process_create_time_real>10000000) {
+	if(scaling_on==0 && now-process_create_time_sim>10000000) {
 		set_sim_time_scale(slurm_sim_conf->clock_scaling);
 		scaling_on=1;
 	}
@@ -529,49 +543,106 @@ void sim_events_loop()
 			default:
 				break;
 			}
-			//last_event_usec = get_sim_utime();
-
+			now = get_sim_utime();
 		}
-		//
-		//jobs_submit_count++;
 	}
 	//
 	if(sim_slurmdbd_agent_sleep_till <= now) {
 		if(sim_slurmdbd_agent_ref!=NULL) {
 			(*sim_slurmdbd_agent_ref)(NULL);
+			now = get_sim_utime();
 		}
 	}
 	// run main scheduler if needed
-	sim_sched_agent_loop();
+	sim_sched_agent_loop(now);
 	// run backfill scheduler if needed
 	if(sim_plugin_backfill_thread_sleep_till <= now) {
 		sim_schedule_plugin_run_once();
+		now = get_sim_utime();
+	}
+
+	/*exit if everything is done*/
+	if(sim_n_noncyclic_events<=0 &&
+	   sim_first_active_job==NULL &&
+	   slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0 &&
+	   slurm_sim_conf->time_after_all_events_done >=0) {
+		/* no more jobs to submit */
+		_update_diag_job_state_counts();
+		if(slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0){
+			if(all_done==0) {
+				info("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
+				all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done;
+			}
+			if(all_done - now < 0) {
+
+				info("time_skipped           : %.3f seconds",(double)time_skipped/1000000.0);
+				info("event loop count       : %" PRId64,count);
+				info("event loop count_skip  : %" PRId64,count_skip);
+				info("event loop count_noskip: %" PRId64,count_noskip);
+				info("event loop skip fraq   : %.3f",(double)count_skip/(double)count);
+
+				info("event loop count_next_event                             : %" PRId64,count_next_event);
+				info("event loop count_sim_plugin_backfill_thread_sleep_till  : %" PRId64,count_sim_plugin_backfill_thread_sleep_till);
+				info("event loop count_sim_slurmdbd_agent_sleep_till          : %" PRId64,count_sim_slurmdbd_agent_sleep_till);
+				info("event loop count_sim_sched_thread_cond_wait_till        : %" PRId64,count_sim_sched_thread_cond_wait_till);
+				info("event loop count_next_sched_time_slurmctld_background   : %" PRId64,count_next_sched_time_slurmctld_background);
+
+				info("All done.");
+				//raise(SIGINT);
+				exit(0);
+			}
+		} else {
+			all_done=0;
+		}
 	}
 
 	/*check can we skip some time*/
-	int64_t skipping_to_utime = INT64_MAX;
-	int64_t skip_usec;
-	if(sim_main_thread_sleep_till > 0 && recursion_depth==1) {
+	int64_t skipping_to_utime = sim_main_thread_sleep_till;
+	//int64_t skip_usec;
+
+
+	if(sim_main_thread_sleep_till > now && recursion_depth==1) {
 		// no skipping if within mini loop
-		skipping_to_utime = sim_main_thread_sleep_till;
-		skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
-		skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
-		skipping_to_utime = MIN(skipping_to_utime, sim_slurmdbd_agent_sleep_till);
-
-		//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
-		//skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
-		//skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
-
-		skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
-		if(job_sched_cnt>0) {
-			skipping_to_utime = MIN(skipping_to_utime, last_sched_time_slurmctld_background+batch_sched_delay*1000000);
+		if(sim_next_event->when < skipping_to_utime) {
+			skipping_to_utime = sim_next_event->when;
+			if(sim_next_event->when < now) {
+				count_next_event++;
+			}
+		}
+		if(sim_plugin_backfill_thread_sleep_till < skipping_to_utime) {
+			skipping_to_utime = sim_plugin_backfill_thread_sleep_till;
+			if(sim_plugin_backfill_thread_sleep_till < now) {
+				count_sim_plugin_backfill_thread_sleep_till++;
+			}
+		}
+		if(sim_slurmdbd_agent_sleep_till < skipping_to_utime) {
+			skipping_to_utime = sim_slurmdbd_agent_sleep_till;
+			if(sim_slurmdbd_agent_sleep_till < now) {
+				count_sim_slurmdbd_agent_sleep_till++;
+			}
+		}
+		if(sim_sched_thread_cond_wait_till < skipping_to_utime) {
+			skipping_to_utime = sim_sched_thread_cond_wait_till;
+			if(sim_sched_thread_cond_wait_till < now) {
+				count_sim_sched_thread_cond_wait_till++;
+			}
 		}
 
-		now = get_sim_utime();
+		/*if(job_sched_cnt>0) {
+			int64_t next_sched_time_slurmctld_background = last_sched_time_slurmctld_background+batch_sched_delay*1000000;
+			if(next_sched_time_slurmctld_background < skipping_to_utime) {
+				skipping_to_utime = next_sched_time_slurmctld_background;
+				if(next_sched_time_slurmctld_background < now) {
+					count_next_sched_time_slurmctld_background++;
+				}
+			}
+		}*/
+
+		//now = get_sim_utime();
 
 
-
-		if(((cur_real_utime-process_create_time_real)>10000000) && (all_done==0) && (proc_rec_count==0)) {
+//((now-process_create_time_sim)>1000000) &&
+		if((all_done==0) && (proc_rec_count==0)) {
 			//&&
 			//	((now-last_event_usec) > 1000000)
 			// sim_main_thread_sleep_till > 0 i.e. in sleep within slurmctrld_backgroung
@@ -585,54 +656,29 @@ void sim_events_loop()
 			//debug2("sim_plugin_sched_thread_sleep %ld", sim_sched_thread_sleep_till-get_sim_utime());
 
 
-			skip_usec = skipping_to_utime - now;// - 10000;
-			if( skip_usec > real_sleep_usec ) {
-				if(skip_usec > 1000000) {
-					skip_usec = 1000000;
-				}
+			//skip_usec = skipping_to_utime - now;// - 10000;
+			if( skipping_to_utime > now ) {
+				//if(skip_usec > 1000000) {
+				//	skip_usec = 1000000;
+				//}
 				//if(skip_usec > 10000) {
 					//debug2("skipping %" PRId64 " usec %.3f from last event", skip_usec,(now-last_event_usec)/1000000.0);
-					set_sim_time(now + skip_usec);
+					skip_usec = skipping_to_utime - now;
+					set_sim_time(skipping_to_utime);
+					now = skipping_to_utime;
 					//now = get_sim_utime();
+					count_skip++;
+					time_skipped += skip_usec;
+					recursion_depth--;
+					return now;
 				//}
+			} else {
+				count_noskip++;
 			}
-		}
-	}
-//		else {
-//			debug2("NotSkipping %d %d %d %d %d %d",
-//					cur_real_utime-process_create_time_real>10000000,
-//					all_done==0,
-//					sim_main_thread_sleep_till > 0,
-//					sim_sched_thread_cond_wait_till > 0,
-//					sim_plugin_backfill_thread_sleep_till > 0,
-//					sim_next_event->when > now);
-//		}
-
-
-
-	/*exit if everything is done*/
-	if(sim_n_noncyclic_events<=0 &&
-			sim_first_active_job==NULL &&
-			slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0 &&
-			slurm_sim_conf->time_after_all_events_done >=0) {
-		/* no more jobs to submit */
-		_update_diag_job_state_counts();
-		if(slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0){
-			if(all_done==0) {
-				info("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
-				all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done;
-			}
-			now = get_sim_utime();
-			if(all_done - now < 0) {
-				info("All done.");
-				//raise(SIGINT);
-				exit(0);
-			}
-		} else {
-			all_done=0;
 		}
 	}
 	recursion_depth--;
+	return now;
 }
 
 /* execure scheduler from schedule_plugin */
@@ -738,22 +784,27 @@ extern void sim_schedule_plugin_run_once()
 extern void sim_mini_loop()
 {
 	/*this function is called from backfiller to let events in main scheduler to process */
-	sim_events_loop();
-	if(sim_main_thread_sleep_till > get_sim_utime()){
+	int64_t now = sim_events_loop();
+	// && sim_next_timelimit_time < now
+	if(sim_main_thread_sleep_till > now){
 		_slurmctld_background(NULL);
 	}
 }
 
 void sim_slurmctld_event_main_loop()
 {
+	int64_t now;
 	// first call to _slurmctld_background
 	_slurmctld_background(NULL);
 	while (1) {
-		sim_main_thread_sleep_till = get_sim_utime() + 1000000;
-		while(sim_main_thread_sleep_till > get_sim_utime()) {
-			sim_events_loop();
+		now = get_sim_utime();
+		sim_main_thread_sleep_till = now + 1000000;
+		while(sim_main_thread_sleep_till > now) {
+			now = sim_events_loop();
 		}
-		_slurmctld_background(NULL);
+		//if(sim_next_timelimit_time < now) {
+			_slurmctld_background(NULL);
+		//}
 	}
 }
 

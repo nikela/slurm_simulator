@@ -2295,6 +2295,9 @@ slurmctld_background_loop_start:
 			lock_slurmctld(node_write_lock);
 			check_node_timers();
 			unlock_slurmctld(node_write_lock);
+#ifdef SLURM_SIMULATOR
+			sim_next_timelimit_time = (last_timelimit_time + PERIODIC_TIMEOUT) * 1000000;
+#endif
 		}
 
 		if (slurm_conf.health_check_interval &&
