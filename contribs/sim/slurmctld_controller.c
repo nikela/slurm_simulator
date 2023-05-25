@@ -13,6 +13,7 @@ int proc_rec_count=0;
 pthread_mutex_t proc_rec_count_lock;
 
 extern void sim_events_loop();
+extern void sim_slurmctld_event_main_loop();
 
 #define main slurmctld_main
 #include "../../src/slurmctld/controller.c"
@@ -453,6 +454,9 @@ void sim_events_first_loop()
 void sim_events_loop()
 {
 	static bool first_run = true;
+	static int recursion_depth = 0;
+
+	recursion_depth++;
 
 	if(first_run) {
 		sim_events_first_loop();
@@ -501,9 +505,9 @@ void sim_events_loop()
 				event_started(EPILOG_COMPLETE_SSIM_RT_EVENT);
 				sim_rpc_epilog_complete(((sim_job_t*)event->payload)->job_id);
 				event_ended(EPILOG_COMPLETE_SSIM_RT_EVENT);
-			case SIM_RUN_BACKFILL_SCHEDULER:
-				sim_schedule_plugin_run_once();
-				break;
+			//case SIM_RUN_BACKFILL_SCHEDULER:
+			//	sim_schedule_plugin_run_once();
+			//	break;
 			case SIM_ACCOUNTING_UPDATE:
 				// mimicking _acct_update_thread
 				(void) list_delete_all(slurmctld_config.acct_update_list,
@@ -539,19 +543,25 @@ void sim_events_loop()
 	}
 	// run main scheduler if needed
 	sim_sched_agent_loop();
-
+	// run backfill scheduler if needed
+	if(sim_plugin_backfill_thread_sleep_till <= now) {
+		sim_schedule_plugin_run_once();
+	}
 
 	/*check can we skip some time*/
 	int64_t skipping_to_utime = INT64_MAX;
 	int64_t skip_usec;
-	if(sim_main_thread_sleep_till > 0) {
+	if(sim_main_thread_sleep_till > 0 && recursion_depth==1) {
+		// no skipping if within mini loop
 		skipping_to_utime = sim_main_thread_sleep_till;
-		//skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
-		//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 		skipping_to_utime = MIN(skipping_to_utime, sim_next_event->when);
+		skipping_to_utime = MIN(skipping_to_utime, sim_plugin_backfill_thread_sleep_till);
 		skipping_to_utime = MIN(skipping_to_utime, sim_slurmdbd_agent_sleep_till);
+
+		//skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 		//skipping_to_utime = MIN(skipping_to_utime, sim_thread_priority_multifactor_sleep_till);
 		//skipping_to_utime = MIN(skipping_to_utime, sim_agent_init_sleep_till);
+
 		skipping_to_utime = MIN(skipping_to_utime, sim_sched_thread_cond_wait_till);
 		if(job_sched_cnt>0) {
 			skipping_to_utime = MIN(skipping_to_utime, last_sched_time_slurmctld_background+batch_sched_delay*1000000);
@@ -575,16 +585,16 @@ void sim_events_loop()
 			//debug2("sim_plugin_sched_thread_sleep %ld", sim_sched_thread_sleep_till-get_sim_utime());
 
 
-			skip_usec = skipping_to_utime - now - 10000;
+			skip_usec = skipping_to_utime - now;// - 10000;
 			if( skip_usec > real_sleep_usec ) {
 				if(skip_usec > 1000000) {
 					skip_usec = 1000000;
 				}
-				if(skip_usec > 10000) {
+				//if(skip_usec > 10000) {
 					//debug2("skipping %" PRId64 " usec %.3f from last event", skip_usec,(now-last_event_usec)/1000000.0);
 					set_sim_time(now + skip_usec);
 					//now = get_sim_utime();
-				}
+				//}
 			}
 		}
 	}
@@ -601,7 +611,6 @@ void sim_events_loop()
 
 
 	/*exit if everything is done*/
-
 	if(sim_n_noncyclic_events<=0 &&
 			sim_first_active_job==NULL &&
 			slurmctld_diag_stats.jobs_running + slurmctld_diag_stats.jobs_pending == 0 &&
@@ -622,14 +631,19 @@ void sim_events_loop()
 		} else {
 			all_done=0;
 		}
-
-
 	}
+	recursion_depth--;
 }
 
 /* execure scheduler from schedule_plugin */
 extern void sim_schedule_plugin_run_once()
 {
+	static int recursion_depth = 0;
+	if(recursion_depth>0){
+		//i.e. already running backfiller
+		return;
+	}
+	recursion_depth++;
 	//int backfill_was_ran=0;
 
 	/*double t=get_realtime();
@@ -646,7 +660,9 @@ extern void sim_schedule_plugin_run_once()
 		next_backfill_utime = get_sim_utime()+1000000;
 	}
 	sim_plugin_backfill_thread_sleep_till = next_backfill_utime;
-	sim_insert_event(next_backfill_utime, SIM_RUN_BACKFILL_SCHEDULER, NULL);
+	recursion_depth--;
+
+	//sim_insert_event(next_backfill_utime, SIM_RUN_BACKFILL_SCHEDULER, NULL);
 	/*times(&m_tms1);
 	st=clock()-st;
 	t=get_realtime()-t;
@@ -719,10 +735,27 @@ extern void sim_schedule_plugin_run_once()
 	}*/
 }
 
-extern void sim_mini_loop(){
-/*this function is called from backfiller to let events in main scheduler to process */
+extern void sim_mini_loop()
+{
+	/*this function is called from backfiller to let events in main scheduler to process */
+	sim_events_loop();
+	if(sim_main_thread_sleep_till > get_sim_utime()){
+		_slurmctld_background(NULL);
+	}
 }
 
+void sim_slurmctld_event_main_loop()
+{
+	// first call to _slurmctld_background
+	_slurmctld_background(NULL);
+	while (1) {
+		sim_main_thread_sleep_till = get_sim_utime() + 1000000;
+		while(sim_main_thread_sleep_till > get_sim_utime()) {
+			sim_events_loop();
+		}
+		_slurmctld_background(NULL);
+	}
+}
 
 int
 main (int argc, char **argv)

@@ -845,6 +845,10 @@ int main(int argc, char **argv)
 
 		if (sched_g_init() != SLURM_SUCCESS)
 			fatal("failed to initialize scheduling plugin");
+
+#ifdef SLURM_SIMULATOR
+		sim_slurmctld_event_main_loop();
+#endif
 		/*
 		 * process slurm background activities, could run as pthread
 		 */
@@ -2094,43 +2098,53 @@ static void *_slurmctld_background(void *no_data)
 	static time_t last_node_acct;
 	static time_t last_ctld_bu_ping;
 	static time_t last_uid_update;
-	time_t now;
-	int no_resp_msg_interval, ping_interval, purge_job_interval;
+	static time_t now;
+	static int no_resp_msg_interval, ping_interval, purge_job_interval;
 	DEF_TIMERS;
 
 	/* Locks: Read config */
-	slurmctld_lock_t config_read_lock = {
+	static slurmctld_lock_t config_read_lock = {
 		READ_LOCK, NO_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 	/* Locks: Read config, read job */
-	slurmctld_lock_t job_read_lock = {
+	static slurmctld_lock_t job_read_lock = {
 		READ_LOCK, READ_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 	/* Locks: Read config, write job, write node, read partition */
-	slurmctld_lock_t job_write_lock = {
+	static slurmctld_lock_t job_write_lock = {
 		READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
 	/* Locks: Write job */
-	slurmctld_lock_t job_write_lock2 = {
+	static slurmctld_lock_t job_write_lock2 = {
 		NO_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 	/* Locks: Read config, write job, write node
 	 * (Might kill jobs on nodes set DOWN) */
-	slurmctld_lock_t node_write_lock = {
+	static slurmctld_lock_t node_write_lock = {
 		READ_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK };
 	/* Locks: Write node */
-	slurmctld_lock_t node_write_lock2 = {
+	static slurmctld_lock_t node_write_lock2 = {
 		NO_LOCK, NO_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK };
 	/* Locks: Write partition */
-	slurmctld_lock_t part_write_lock = {
+	static slurmctld_lock_t part_write_lock = {
 		NO_LOCK, NO_LOCK, NO_LOCK, WRITE_LOCK, NO_LOCK };
 	/* Locks: Read job and node */
-	slurmctld_lock_t job_node_read_lock = {
+	static slurmctld_lock_t job_node_read_lock = {
 		NO_LOCK, READ_LOCK, READ_LOCK, NO_LOCK, NO_LOCK };
 	/*
 	 * purge_old_job modifes jobs and reads conf info. It can also
 	 * call re_kill_job(), which can modify nodes and reads fed info.
 	 */
-	slurmctld_lock_t purge_job_locks = {
+	static slurmctld_lock_t purge_job_locks = {
 		.conf = READ_LOCK, .job = WRITE_LOCK,
 		.node = WRITE_LOCK, .fed = READ_LOCK
 	};
+
+#ifdef SLURM_SIMULATOR
+	static bool first_run = true;
+
+	if(first_run) {
+		first_run = false;
+	} else {
+		goto slurmctld_background_loop_start;
+	}
+#endif
 
 	/* Let the dust settle before doing work */
 	now = time(NULL);
@@ -2149,14 +2163,24 @@ static void *_slurmctld_background(void *no_data)
 	(void) pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	(void) pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
+	debug3("_slurmctld_background pid = %u", getpid());
+
 #ifdef SLURM_SIMULATOR
 	sim_sched_thread_cond_wait_till = (last_sched_time + sched_interval)*1000000;
 	if(pthread_self() == sim_main_thread) {
 		debug2("pthread_self() == sim_main_thread");
 	}
+
+	// for first time we also want to sleep a second
+	// following sleep will be outside
+	sim_main_thread_sleep_till = get_sim_utime() + 1000000;
+	while(sim_main_thread_sleep_till > get_sim_utime()) {
+		sim_events_loop();
+	}
+
+slurmctld_background_loop_start:
 #endif
 
-	debug3("_slurmctld_background pid = %u", getpid());
 
 	while (1) {
 		bool call_schedule = false, full_queue = false;
@@ -2167,12 +2191,7 @@ static void *_slurmctld_background(void *no_data)
 		     i++) {
 			usleep(100000);
 		}
-#else
-		// events loop
-		sim_main_thread_sleep_till = get_sim_utime() + 1000000;
-		while(sim_main_thread_sleep_till > get_sim_utime()) {
-			sim_events_loop();
-		}
+
 #endif
 		//debug3("_slurmctld_background cycle");
 
@@ -2496,6 +2515,9 @@ static void *_slurmctld_background(void *no_data)
 		}
 
 		END_TIMER2(__func__);
+#ifdef SLURM_SIMULATOR
+		return NULL;
+#endif
 	}
 
 	debug3("_slurmctld_background shutting down");
