@@ -547,10 +547,14 @@ int64_t sim_events_loop()
 		}
 	}
 	//
-	if(sim_slurmdbd_agent_sleep_till <= now) {
+	if(sim_slurmdbd_agent_sleep_till <= now || sim_slurmdbd_agent_count >= 100) {
 		if(sim_slurmdbd_agent_ref!=NULL) {
 			(*sim_slurmdbd_agent_ref)(NULL);
+			sim_slurmdbd_agent_count = 0;
 			now = get_sim_utime();
+			if(sim_slurmdbd_agent_sleep_till <= now) {
+				sim_slurmdbd_agent_sleep_till = now + 5*USEC_IN_SEC;
+			}
 		}
 	}
 	// run main scheduler if needed

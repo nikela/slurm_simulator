@@ -966,7 +966,8 @@ extern int slurmdbd_agent_send(uint16_t rpc_version, persist_msg_t *req)
 	}
 
 #ifdef SLURM_SIMULATOR
-	sim_slurmdbd_agent_sleep_till = get_sim_utime();
+	//sim_slurmdbd_agent_sleep_till = get_sim_utime();
+	sim_slurmdbd_agent_count = cnt;
 #endif
 	slurm_cond_broadcast(&agent_cond);
 	slurm_mutex_unlock(&agent_lock);

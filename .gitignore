@@ -76,6 +76,7 @@ TAGS
 tags
 # local build
 /build/
+/build_opt/
 # IDE
 /.cproject
 /.project

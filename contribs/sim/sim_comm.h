@@ -37,6 +37,7 @@ extern void * (*sim_decay_thread_ref)(void *no_data);
 extern uint64_t (*sim_backfill_agent_ref)(void);
 
 extern int64_t sim_slurmdbd_agent_sleep_till;
+extern int64_t sim_slurmdbd_agent_count;
 
 extern void (*sim_slurmctld_req_ref)(slurm_msg_t *msg);
 

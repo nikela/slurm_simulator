@@ -34,7 +34,7 @@ int64_t sim_constructor_start_time=0;
 
 
 int64_t sim_slurmdbd_agent_sleep_till = 0;
-
+int64_t sim_slurmdbd_agent_count = 0;
 
 slurm_msg_t * sim_request_msg = NULL;;
 slurm_msg_t * sim_response_msg = NULL;
