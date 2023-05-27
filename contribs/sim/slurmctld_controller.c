@@ -228,7 +228,7 @@ void sim_complete_job(uint32_t job_id)
 	}
 
 
-	debug2("Processing RPC: REQUEST_COMPLETE_BATCH_SCRIPT from "
+	logpe2("Processing RPC: REQUEST_COMPLETE_BATCH_SCRIPT from "
 		"uid=%u JobId=%u",
 		job_ptr->user_id, job_id);
 
@@ -308,11 +308,11 @@ void sim_rpc_epilog_complete(uint32_t job_id)
              * of managed jobs.
              */
             if (!LOTS_OF_AGENTS && !defer_sched){
-                debug3("Calling schedule from epilog_complete");
+				logpe3("Calling schedule from epilog_complete");
                 schedule(false);	/* Has own locking */
             }
             else{
-                debug3("Calling queue_job_scheduler from epilog_complete");
+				logpe3("Calling queue_job_scheduler from epilog_complete");
                 queue_job_scheduler();
             }
             schedule_node_save();		/* Has own locking */
@@ -344,11 +344,11 @@ void sim_rpc_epilog_complete(uint32_t job_id)
          * of managed jobs.
          */
         if (!LOTS_OF_AGENTS && !defer_sched){
-            debug3("Calling schedule from epilog_complete");
+			logpe3("Calling schedule from epilog_complete");
             schedule(false);	/* Has own locking */
         }
         else{
-            debug3("Calling queue_job_scheduler from epilog_complete");
+			logpe3("Calling queue_job_scheduler from epilog_complete");
             queue_job_scheduler();
         }
         schedule_node_save();		/* Has own locking */

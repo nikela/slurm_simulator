@@ -1270,7 +1270,7 @@ extern void queue_job_scheduler_c(const char* from)
 {
     slurm_mutex_lock(&sched_cnt_mutex);
     job_sched_cnt++;
-    debug2("queue_job_scheduler request from %s job_sched_cnt=%d",from,job_sched_cnt);
+    logpe2("queue_job_scheduler request from %s job_sched_cnt=%d",from,job_sched_cnt);
     slurm_mutex_unlock(&sched_cnt_mutex);
 }
 
@@ -2163,7 +2163,7 @@ static void *_slurmctld_background(void *no_data)
 	(void) pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	(void) pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
-	debug3("_slurmctld_background pid = %u", getpid());
+	logpe3("_slurmctld_background pid = %u", getpid());
 
 #ifdef SLURM_SIMULATOR
 	sim_sched_thread_cond_wait_till = (last_sched_time + sched_interval)*1000000;
@@ -2287,7 +2287,7 @@ slurmctld_background_loop_start:
 			lock_slurmctld(job_write_lock);
 			now = time(NULL);
 			last_timelimit_time = now;
-			debug2("Testing job time limits and checkpoints");
+			logpe2("Testing job time limits and checkpoints");
 			job_time_limit();
 			job_resv_check();
 			unlock_slurmctld(job_write_lock);
@@ -2420,7 +2420,7 @@ slurmctld_background_loop_start:
 		if (call_schedule) {
 			lock_slurmctld(job_write_lock2);
 			now = time(NULL);
-			debug3("Calling schedule from _slurmctld_background %ld %ld %ld",now,last_sched_time,now-last_sched_time);
+			logpe3("Calling schedule from _slurmctld_background %ld %ld %ld",now,last_sched_time,now-last_sched_time);
 			last_sched_time = now;
 			bb_g_load_state(false);	/* May alter job nice/prio */
 			unlock_slurmctld(job_write_lock2);

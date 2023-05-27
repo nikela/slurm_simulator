@@ -4107,8 +4107,10 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 	int spec_count;
 	char *mem_type, buf[256], *signal_flags, *spec_type, *job_id;
 
+#ifndef SLURM_SIMULATOR
 	if (get_log_level() < LOG_LEVEL_DEBUG3)
 		return;
+#endif
 
 	if (job_desc == NULL)
 		return;
@@ -4121,7 +4123,7 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 		snprintf(buf, sizeof(buf), "%u", job_desc->job_id);
 		job_id = buf;
 	}
-	debug3("JobDesc: user_id=%u JobId=%s partition=%s name=%s",
+	logpe3("JobDesc: user_id=%u JobId=%s partition=%s name=%s",
 	       job_desc->user_id, job_id,
 	       job_desc->partition, job_desc->name);
 
@@ -4139,11 +4141,11 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 		spec_type  = "core";
 		spec_count = job_desc->core_spec;
 	}
-	debug3("   cpus=%ld-%u pn_min_cpus=%ld %s_spec=%d",
+	logpe3("   cpus=%ld-%u pn_min_cpus=%ld %s_spec=%d",
 	       min_cpus, job_desc->max_cpus, pn_min_cpus,
 	       spec_type, spec_count);
 
-	debug3("   Nodes=%u-[%u] Sock/Node=%u Core/Sock=%u Thread/Core=%u",
+	logpe3("   Nodes=%u-[%u] Sock/Node=%u Core/Sock=%u Thread/Core=%u",
 	       job_desc->min_nodes, job_desc->max_nodes,
 	       job_desc->sockets_per_node, job_desc->cores_per_socket,
 	       job_desc->threads_per_core);
@@ -4160,16 +4162,16 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 	}
 	pn_min_tmp_disk = (job_desc->pn_min_tmp_disk != NO_VAL) ?
 		(long) job_desc->pn_min_tmp_disk : -1L;
-	debug3("   pn_min_memory_%s=%"PRIu64" pn_min_tmp_disk=%ld",
+	logpe3("   pn_min_memory_%s=%"PRIu64" pn_min_tmp_disk=%ld",
 	       mem_type, pn_min_memory, pn_min_tmp_disk);
 	immediate = (job_desc->immediate == 0) ? 0L : 1L;
-	debug3("   immediate=%ld reservation=%s",
+	logpe3("   immediate=%ld reservation=%s",
 	       immediate, job_desc->reservation);
-	debug3("   features=%s batch_features=%s cluster_features=%s prefer=%s",
+	logpe3("   features=%s batch_features=%s cluster_features=%s prefer=%s",
 	       job_desc->features, job_desc->batch_features,
 	       job_desc->cluster_features, job_desc->prefer);
 
-	debug3("   req_nodes=%s exc_nodes=%s",
+	logpe3("   req_nodes=%s exc_nodes=%s",
 	       job_desc->req_nodes, job_desc->exc_nodes);
 
 	time_limit = (job_desc->time_limit != NO_VAL) ?
@@ -4182,72 +4184,72 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 		(long) job_desc->contiguous : -1L;
 	shared = (job_desc->shared != NO_VAL16) ?
 		(long) job_desc->shared : -1L;
-	debug3("   time_limit=%ld-%ld priority=%ld contiguous=%ld shared=%ld",
+	logpe3("   time_limit=%ld-%ld priority=%ld contiguous=%ld shared=%ld",
 	       time_min, time_limit, priority, contiguous, shared);
 
 	kill_on_node_fail = (job_desc->kill_on_node_fail !=
 			     NO_VAL16) ?
 		(long) job_desc->kill_on_node_fail : -1L;
 	if (job_desc->script)	/* log has problem with string len & null */
-		debug3("   kill_on_node_fail=%ld script=%.40s...",
+		logpe3("   kill_on_node_fail=%ld script=%.40s...",
 		       kill_on_node_fail, job_desc->script);
 	else
-		debug3("   kill_on_node_fail=%ld script=(null)",
+		logpe3("   kill_on_node_fail=%ld script=(null)",
 		       kill_on_node_fail);
 
 	if (job_desc->argc == 1)
-		debug3("   argv=\"%s\"",
+		logpe3("   argv=\"%s\"",
 		       job_desc->argv[0]);
 	else if (job_desc->argc == 2)
-		debug3("   argv=%s,%s",
+		logpe3("   argv=%s,%s",
 		       job_desc->argv[0],
 		       job_desc->argv[1]);
 	else if (job_desc->argc > 2)
-		debug3("   argv=%s,%s,%s,...",
+		logpe3("   argv=%s,%s,%s,...",
 		       job_desc->argv[0],
 		       job_desc->argv[1],
 		       job_desc->argv[2]);
 
 	if (job_desc->env_size == 1)
-		debug3("   environment=\"%s\"",
+		logpe3("   environment=\"%s\"",
 		       job_desc->environment[0]);
 	else if (job_desc->env_size == 2)
-		debug3("   environment=%s,%s",
+		logpe3("   environment=%s,%s",
 		       job_desc->environment[0],
 		       job_desc->environment[1]);
 	else if (job_desc->env_size > 2)
-		debug3("   environment=%s,%s,%s,...",
+		logpe3("   environment=%s,%s,%s,...",
 		       job_desc->environment[0],
 		       job_desc->environment[1],
 		       job_desc->environment[2]);
 
 	if (job_desc->spank_job_env_size == 1)
-		debug3("   spank_job_env=\"%s\"",
+		logpe3("   spank_job_env=\"%s\"",
 		       job_desc->spank_job_env[0]);
 	else if (job_desc->spank_job_env_size == 2)
-		debug3("   spank_job_env=%s,%s",
+		logpe3("   spank_job_env=%s,%s",
 		       job_desc->spank_job_env[0],
 		       job_desc->spank_job_env[1]);
 	else if (job_desc->spank_job_env_size > 2)
-		debug3("   spank_job_env=%s,%s,%s,...",
+		logpe3("   spank_job_env=%s,%s,%s,...",
 		       job_desc->spank_job_env[0],
 		       job_desc->spank_job_env[1],
 		       job_desc->spank_job_env[2]);
 
-	debug3("   stdin=%s stdout=%s stderr=%s",
+	logpe3("   stdin=%s stdout=%s stderr=%s",
 	       job_desc->std_in, job_desc->std_out, job_desc->std_err);
 
-	debug3("   work_dir=%s alloc_node:sid=%s:%u",
+	logpe3("   work_dir=%s alloc_node:sid=%s:%u",
 	       job_desc->work_dir,
 	       job_desc->alloc_node, job_desc->alloc_sid);
 
-	debug3("   power_flags=%s",
+	logpe3("   power_flags=%s",
 	       power_flags_str(job_desc->power_flags));
 
-	debug3("   resp_host=%s alloc_resp_port=%u other_port=%u",
+	logpe3("   resp_host=%s alloc_resp_port=%u other_port=%u",
 	       job_desc->resp_host,
 	       job_desc->alloc_resp_port, job_desc->other_port);
-	debug3("   dependency=%s account=%s qos=%s comment=%s",
+	logpe3("   dependency=%s account=%s qos=%s comment=%s",
 	       job_desc->dependency, job_desc->account,
 	       job_desc->qos, job_desc->comment);
 
@@ -4257,7 +4259,7 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 		(long) job_desc->overcommit : -1L;
 	nice = (job_desc->nice != NO_VAL) ?
 		((int64_t)job_desc->nice - NICE_OFFSET) : 0;
-	debug3("   mail_type=%u mail_user=%s nice=%ld num_tasks=%ld "
+	logpe3("   mail_type=%u mail_user=%s nice=%ld num_tasks=%ld "
 	       "open_mode=%u overcommit=%ld acctg_freq=%s",
 	       job_desc->mail_type, job_desc->mail_user, nice, num_tasks,
 	       job_desc->open_mode, overcommit, job_desc->acctg_freq);
@@ -4267,7 +4269,7 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 		(long) job_desc->cpus_per_task : -1L;
 	requeue = (job_desc->requeue != NO_VAL16) ?
 		(long) job_desc->requeue : -1L;
-	debug3("   network=%s begin=%s cpus_per_task=%ld requeue=%ld "
+	logpe3("   network=%s begin=%s cpus_per_task=%ld requeue=%ld "
 	       "licenses=%s",
 	       job_desc->network, buf, cpus_per_task, requeue,
 	       job_desc->licenses);
@@ -4282,7 +4284,7 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 	cpu_freq_debug(NULL, NULL, buf, sizeof(buf), job_desc->cpu_freq_gov,
 		       job_desc->cpu_freq_min, job_desc->cpu_freq_max,
 		       NO_VAL);
-	debug3("   end_time=%s signal=%s%u@%u wait_all_nodes=%ld cpu_freq=%s",
+	logpe3("   end_time=%s signal=%s%u@%u wait_all_nodes=%ld cpu_freq=%s",
 	       buf, signal_flags, job_desc->warn_signal, job_desc->warn_time,
 	       wait_all_nodes, buf);
 
@@ -4295,40 +4297,40 @@ void dump_job_desc(job_desc_msg_t *job_desc)
 		(long) job_desc->ntasks_per_core : -1L;
 	ntasks_per_tres = (job_desc->ntasks_per_tres != NO_VAL16) ?
 		(long) job_desc->ntasks_per_tres : -1L;
-	debug3("   ntasks_per_node=%ld ntasks_per_socket=%ld ntasks_per_core=%ld ntasks_per_tres=%ld",
+	logpe3("   ntasks_per_node=%ld ntasks_per_socket=%ld ntasks_per_core=%ld ntasks_per_tres=%ld",
 	       ntasks_per_node, ntasks_per_socket, ntasks_per_core,
 	       ntasks_per_tres);
 
-	debug3("   mem_bind=%u:%s plane_size:%u",
+	logpe3("   mem_bind=%u:%s plane_size:%u",
 	       job_desc->mem_bind_type, job_desc->mem_bind,
 	       job_desc->plane_size);
-	debug3("   array_inx=%s", job_desc->array_inx);
-	debug3("   burst_buffer=%s", job_desc->burst_buffer);
-	debug3("   mcs_label=%s", job_desc->mcs_label);
+	logpe3("   array_inx=%s", job_desc->array_inx);
+	logpe3("   burst_buffer=%s", job_desc->burst_buffer);
+	logpe3("   mcs_label=%s", job_desc->mcs_label);
 	slurm_make_time_str(&job_desc->deadline, buf, sizeof(buf));
-	debug3("   deadline=%s", buf);
-	debug3("   bitflags=0x%"PRIx64" delay_boot=%u",
+	logpe3("   deadline=%s", buf);
+	logpe3("   bitflags=0x%"PRIx64" delay_boot=%u",
 	       job_desc->bitflags, job_desc->delay_boot);
 
 	if (job_desc->cpus_per_tres)
-		debug3("   CPUs_per_TRES=%s", job_desc->cpus_per_tres);
+		logpe3("   CPUs_per_TRES=%s", job_desc->cpus_per_tres);
 	if (job_desc->mem_per_tres)
-		debug3("   Mem_per_TRES=%s", job_desc->mem_per_tres);
+		logpe3("   Mem_per_TRES=%s", job_desc->mem_per_tres);
 	if (job_desc->tres_bind)
-		debug3("   TRES_bind=%s", job_desc->tres_bind);
+		logpe3("   TRES_bind=%s", job_desc->tres_bind);
 	if (job_desc->tres_freq)
-		debug3("   TRES_freq=%s", job_desc->tres_freq);
+		logpe3("   TRES_freq=%s", job_desc->tres_freq);
 	if (job_desc->tres_per_job)
-		debug3("   TRES_per_job=%s", job_desc->tres_per_job);
+		logpe3("   TRES_per_job=%s", job_desc->tres_per_job);
 	if (job_desc->tres_per_node)
-		debug3("   TRES_per_node=%s", job_desc->tres_per_node);
+		logpe3("   TRES_per_node=%s", job_desc->tres_per_node);
 	if (job_desc->tres_per_socket)
-		debug3("   TRES_per_socket=%s", job_desc->tres_per_socket);
+		logpe3("   TRES_per_socket=%s", job_desc->tres_per_socket);
 	if (job_desc->tres_per_task)
-		debug3("   TRES_per_task=%s", job_desc->tres_per_task);
+		logpe3("   TRES_per_task=%s", job_desc->tres_per_task);
 
 	if (job_desc->container || job_desc->container_id)
-		debug3("   container=%s container-id=%s",
+		logpe3("   container=%s container-id=%s",
 		       job_desc->container, job_desc->container_id);
 }
 
@@ -15720,7 +15722,7 @@ extern bool job_epilog_complete(uint32_t job_id, char *node_name,
 	job_record_t *job_ptr = find_job_record(job_id);
 	node_record_t *node_ptr;
 
-	debug2("job_epilog_complete for JobId=%u with node=%s and return_code=%u.",
+	logpe2("job_epilog_complete for JobId=%u with node=%s and return_code=%u.",
 			      job_id, node_name, return_code);
 	if (job_ptr == NULL) {
 		debug("%s: unable to find JobId=%u for node=%s with return_code=%u.",

@@ -1942,7 +1942,7 @@ static void _slurm_rpc_epilog_complete(slurm_msg_t *msg)
 	bool run_scheduler = false;
 
 	START_TIMER;
-	debug2("Processing RPC: MESSAGE_EPILOG_COMPLETE uid=%u JobId=%d NodeName=%s", msg->auth_uid, epilog_msg->job_id, epilog_msg->node_name);
+	logpe2("Processing RPC: MESSAGE_EPILOG_COMPLETE uid=%u JobId=%d NodeName=%s", msg->auth_uid, epilog_msg->job_id, epilog_msg->node_name);
 	if (!validate_slurm_user(msg->auth_uid)) {
 		error("Security violation, EPILOG_COMPLETE RPC from uid=%u",
 		      msg->auth_uid);
@@ -2137,7 +2137,7 @@ static void _slurm_rpc_complete_batch_script(slurm_msg_t *msg)
 
 	/* init */
 	START_TIMER;
-	debug3("Processing RPC details: REQUEST_COMPLETE_BATCH_SCRIPT for JobId=%u",
+	logpe3("Processing RPC details: REQUEST_COMPLETE_BATCH_SCRIPT for JobId=%u",
 	       comp_msg->job_id);
 
 	if (!validate_slurm_user(msg->auth_uid)) {
@@ -3801,7 +3801,7 @@ send_msg:
 
 		schedule_job_save();	/* Has own locks */
 		schedule_node_save();	/* Has own locks */
-		debug3("Calling queue_job_scheduler from submit_batch_job");
+		logpe3("Calling queue_job_scheduler from submit_batch_job");
 		queue_job_scheduler();
 	}
 	xfree(err_msg);
@@ -6880,7 +6880,7 @@ void slurmctld_req(slurm_msg_t *msg)
 		}
 	}
 
-	debug2("Processing RPC: %s from UID=%u",
+	logpe2("Processing RPC: %s from UID=%u",
 	       rpc_num2string(msg->msg_type), msg->auth_uid);
 
 	for (int i = 0; slurmctld_rpcs[i].msg_type; i++) {

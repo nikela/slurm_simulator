@@ -370,7 +370,50 @@ extern const char plugin_type[];
 	format_print(LOG_LEVEL_DEBUG5, fmt, ##__VA_ARGS__);\
 	} while (0)
 
-
+#ifdef SLURM_SIMULATOR
+//
+#define logpe(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_INFO, fmt, ##__VA_ARGS__);\
+	} while (0)
+#define logpe2(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_INFO, fmt, ##__VA_ARGS__);\
+	} while (0)
+#define logpe3(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_INFO, fmt, ##__VA_ARGS__);\
+	} while (0)
+#define logpe4(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_INFO, fmt, ##__VA_ARGS__);\
+	} while (0)
+#define logpe5(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_INFO, fmt, ##__VA_ARGS__);\
+	} while (0)
+#else
+#define logpe(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__);\
+	} while (0)
+#define logpe2(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_DEBUG2, fmt, ##__VA_ARGS__);\
+	} while (0)
+#define logpe3(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_DEBUG3, fmt, ##__VA_ARGS__);\
+	} while (0)
+#define logpe4(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_DEBUG4, fmt, ##__VA_ARGS__);\
+	} while (0)
+#define logpe5(fmt, ...)	\
+	do {			\
+	format_print(LOG_LEVEL_DEBUG5, fmt, ##__VA_ARGS__);\
+	} while (0)
+#endif
 /*
  * Like above logging messages, but prepend "sched: " to the log entry
  * and route the message into the sched_log if enabled.

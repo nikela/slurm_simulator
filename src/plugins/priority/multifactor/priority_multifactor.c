@@ -1854,7 +1854,7 @@ extern uint32_t priority_p_set(uint32_t last_prio, job_record_t *job_ptr)
 
 	priority = _get_priority_internal(time(NULL), job_ptr);
 
-	debug2("initial priority for job %u is %u", job_ptr->job_id, priority);
+	logpe2("initial priority for job %u is %u", job_ptr->job_id, priority);
 
 	return priority;
 }
