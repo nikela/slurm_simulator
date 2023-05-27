@@ -592,6 +592,7 @@ int64_t sim_events_loop()
 				info("event loop count_next_sched_time_slurmctld_background   : %" PRId64,count_next_sched_time_slurmctld_background);
 
 				info("All done.");
+				log_flush();
 				//raise(SIGINT);
 				exit(0);
 			}

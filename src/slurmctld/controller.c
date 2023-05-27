@@ -3118,6 +3118,11 @@ void update_log_levels(int req_slurmctld_debug, int req_syslog_debug)
 	else
 		log_opts.syslog_level = LOG_LEVEL_FATAL;
 
+#ifdef SLURM_SIMULATOR
+	log_opts.syslog_level = LOG_LEVEL_QUIET;
+	log_opts.stderr_level = LOG_LEVEL_QUIET;
+#endif
+
 	log_alter(log_opts, LOG_DAEMON, slurm_conf.slurmctld_logfile);
 
 	debug("slurmctld log levels: stderr=%s logfile=%s syslog=%s",

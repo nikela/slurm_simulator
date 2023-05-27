@@ -1191,6 +1191,9 @@ static void _log_msg(log_level_t level, bool sched, bool spank, bool warn,
 	char *msgbuf = NULL;
 	char *eol = "\n";
 	int priority = LOG_INFO;
+#ifdef SLURM_SIMULATOR
+	static int count_msg = 0;
+#endif
 
 	slurm_mutex_lock(&log_lock);
 
@@ -1330,8 +1333,15 @@ static void _log_msg(log_level_t level, bool sched, bool spank, bool warn,
 		xassert(log->opt.logfile_fmt == LOG_FILE_FMT_TIMESTAMP);
 		xlogfmtcat(&msgbuf, "[%M] %s%s%s", log->prefix, pfx, buf);
 		_log_printf(log, log->fbuf, log->logfp, "%s\n", msgbuf);
+#ifdef SLURM_SIMULATOR
+		count_msg++;
+		if(count_msg > 1000){
+			fflush(log->logfp);
+			count_msg = 0;
+		}
+#else
 		fflush(log->logfp);
-
+#endif
 		xfree(msgbuf);
 	}
 
@@ -1380,6 +1390,11 @@ void
 log_flush()
 {
 	slurm_mutex_lock(&log_lock);
+#ifdef SLURM_SIMULATOR
+	if (log->logfp) {
+		fflush(log->logfp);
+	}
+#endif
 	_log_flush(log);
 	slurm_mutex_unlock(&log_lock);
 }
