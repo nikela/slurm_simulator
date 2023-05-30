@@ -777,7 +777,12 @@ extern int send_registration_msg(uint32_t status)
 		goto fail;
 	}
 
+#ifdef SLURM_SIMULATOR
+	// @todo properly handle responce
+	resp_msg.data = NULL;
+#endif
 	_handle_node_reg_resp(&resp_msg);
+
 	slurm_free_msg_data(resp_msg.msg_type, resp_msg.data);
 
 	if (errno) {

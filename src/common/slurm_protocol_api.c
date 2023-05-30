@@ -1996,18 +1996,22 @@ extern int slurm_send_node_msg(int fd, slurm_msg_t *msg)
 {
 	msg_bufs_t buffers = { 0 };
 	int rc;
+	slurm_node_reg_resp_msg_t *node_reg_resp_msg;
 #ifdef SLURM_SIMULATOR
 	if(sim_slurmctld_req_ref!=NULL && sim_request_msg !=NULL && sim_response_msg !=NULL) {
 		switch(sim_request_msg->msg_type) {
 			case  MESSAGE_NODE_REGISTRATION_STATUS:
 				sim_response_msg->msg_type  = msg->msg_type;
-				memcpy(sim_response_msg->data, msg->data, msg->data_size);
+				node_reg_resp_msg = (slurm_node_reg_resp_msg_t*)msg->data;
+				sim_response_msg->data = xmalloc(sizeof(slurm_node_reg_resp_msg_t));
+				memcpy(sim_response_msg->data, node_reg_resp_msg, sizeof(slurm_node_reg_resp_msg_t));
 				sim_response_msg->data_size = msg->data_size;
 				return SLURM_SUCCESS;
 				break;
 			case  REQUEST_SUBMIT_BATCH_JOB:
 				sim_response_msg->msg_type  = msg->msg_type;
-				memcpy(sim_response_msg->data, msg->data, msg->data_size);
+				sim_response_msg->data = xmalloc(sizeof(submit_response_msg_t));
+				memcpy(sim_response_msg->data, msg->data, sizeof(submit_response_msg_t));
 				sim_response_msg->data_size = msg->data_size;
 				return SLURM_SUCCESS;
 				break;

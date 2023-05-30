@@ -57,6 +57,9 @@ void agent_queue_request(agent_arg_t *agent_arg_ptr)
 		break;
 	case REQUEST_TERMINATE_JOB:
 		// this initiated from job_compleate by jobs finishing by themselves
+		// can be called again if there are problems
+		kill_job = (kill_job_msg_t*)agent_arg_ptr->msg_args;
+		sim_job_requested_kill_timelimit(kill_job->step_id.job_id);
 		call_slurmctld_agent_queue_request=false;
 		break;
 	case REQUEST_NODE_REGISTRATION_STATUS:

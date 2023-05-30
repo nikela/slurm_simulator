@@ -277,6 +277,15 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 //			slurmctld_req(&req_msg);
 			rc = slurm_submit_batch_job(desc, &resp);
 		}
+		if(resp != NULL) {
+			// insert job to active simulated job list
+			if (active_job->job_id == 0) {
+				pthread_mutex_lock(&events_mutex);
+				active_job->job_id = resp->job_id;
+				event_submit_batch_job->job_id = resp->job_id;
+				pthread_mutex_unlock(&events_mutex);
+			}
+		}
 		if (rc >= 0)
 			break;
 		if (errno == ESLURM_ERROR_ON_DESC_TO_RECORD_COPY) {
