@@ -124,7 +124,7 @@
 #include "src/slurmd/slurmd/slurmd.h"
 
 #ifdef SLURM_SIMULATOR
-#include "../../contribs/sim/sim_comm.h"
+#include "../../../contribs/sim/sim_comm.h"
 #endif
 
 #define MAX_THREADS		256
