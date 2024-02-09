@@ -2674,6 +2674,10 @@ extern int make_batch_job_cred(batch_job_launch_msg_t *launch_msg_ptr,
 	cred_arg.step_id.step_id = SLURM_BATCH_SCRIPT;
 	cred_arg.step_id.step_het_comp = NO_VAL;
 	if (job_resrcs_ptr->memory_allocated) {
+#ifdef SLURM_SIMULATOR
+		// due to front-end mode
+		int batch_inx = 0;
+#else
 		int batch_inx = job_get_node_inx(
 			job_ptr->batch_host, job_ptr->node_bitmap);
 
@@ -2682,6 +2686,7 @@ extern int make_batch_job_cred(batch_job_launch_msg_t *launch_msg_ptr,
 			      __func__, job_ptr->batch_host, job_ptr);
 			batch_inx = 0;
 		}
+#endif
 		cred_arg.job_mem_alloc = xmalloc(sizeof(uint64_t));
 		cred_arg.job_mem_alloc[0] =
 			job_resrcs_ptr->memory_allocated[batch_inx];

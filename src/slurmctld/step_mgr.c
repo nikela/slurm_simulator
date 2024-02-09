@@ -4548,6 +4548,10 @@ extern void step_set_alloc_tres(step_record_t *step_ptr, uint32_t node_count,
 		 * job specific job_resrcs structure.
 		 */
 		if (job_ptr->batch_host) {
+#ifdef SLURM_SIMULATOR
+			// due to front-end mode
+			batch_inx = 0;
+#else
 			batch_inx = job_get_node_inx(
 				job_ptr->batch_host, job_ptr->node_bitmap);
 			if (batch_inx == -1) {
@@ -4555,6 +4559,7 @@ extern void step_set_alloc_tres(step_record_t *step_ptr, uint32_t node_count,
 				      __func__, job_ptr->batch_host, job_ptr);
 				batch_inx = 0;
 			}
+#endif
 		}
 
 		/* get the cpus and memory on the first node */
