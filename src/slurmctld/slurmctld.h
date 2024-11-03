@@ -926,6 +926,12 @@ struct job_record {
 	uint32_t wait4switch; /* Maximum time to wait for minimum switches */
 	bool     best_switch; /* true=min number of switches met           */
 	time_t wait4switch_start; /* Time started waiting for switch       */
+
+	// SCI
+	double change_rate;
+	carbon_record_t *carbon_records;
+	int record_count;
+	double actual_sci;
 };
 
 /* Job dependency specification, used in "depend_list" within job_record */

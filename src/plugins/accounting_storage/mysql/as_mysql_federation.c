@@ -473,26 +473,26 @@ empty:
 	federation_list = list_create(slurmdb_destroy_federation_rec);
 
 	while ((row = mysql_fetch_row(result))) {
- 		slurmdb_cluster_cond_t clus_cond;
- 		List tmp_list = NULL;
- 		fed = xmalloc(sizeof(slurmdb_federation_rec_t));
- 		list_append(federation_list, fed);
+		slurmdb_cluster_cond_t clus_cond;
+		List tmp_list = NULL;
+		fed = xmalloc(sizeof(slurmdb_federation_rec_t));
+		list_append(federation_list, fed);
 
- 		fed->name  = xstrdup(row[FED_REQ_NAME]);
- 		fed->flags = slurm_atoul(row[FED_REQ_FLAGS]);
+		fed->name  = xstrdup(row[FED_REQ_NAME]);
+		fed->flags = slurm_atoul(row[FED_REQ_FLAGS]);
 
- 		/* clusters in federation */
- 		slurmdb_init_cluster_cond(&clus_cond, 0);
+		/* clusters in federation */
+		slurmdb_init_cluster_cond(&clus_cond, 0);
 		clus_cond.federation_list = list_create(xfree_ptr);
- 		list_append(clus_cond.federation_list, xstrdup(fed->name));
+		list_append(clus_cond.federation_list, xstrdup(fed->name));
 
- 		tmp_list = as_mysql_get_clusters(mysql_conn, uid, &clus_cond);
- 		FREE_NULL_LIST(clus_cond.federation_list);
- 		if (!tmp_list) {
- 			error("Unable to get federation clusters");
- 			continue;
- 		}
- 		fed->cluster_list = tmp_list;
+		tmp_list = as_mysql_get_clusters(mysql_conn, uid, &clus_cond);
+		FREE_NULL_LIST(clus_cond.federation_list);
+		if (!tmp_list) {
+			error("Unable to get federation clusters");
+			continue;
+		}
+		fed->cluster_list = tmp_list;
 	}
 	mysql_free_result(result);
 

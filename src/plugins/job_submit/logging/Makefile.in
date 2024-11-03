@@ -182,7 +182,9 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(pkglibdir)"
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
-job_submit_logging_la_LIBADD =
+am__DEPENDENCIES_1 =
+job_submit_logging_la_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 am_job_submit_logging_la_OBJECTS = job_submit_logging.lo
 job_submit_logging_la_OBJECTS = $(am_job_submit_logging_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -335,7 +337,8 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 JSON_CPPFLAGS = @JSON_CPPFLAGS@
-JSON_LDFLAGS = @JSON_LDFLAGS@
+# add CURL and JSON-C
+JSON_LDFLAGS = -ljson-c
 JWT_CPPFLAGS = @JWT_CPPFLAGS@
 JWT_LDFLAGS = @JWT_LDFLAGS@
 LD = @LD@
@@ -524,6 +527,7 @@ pkglib_LTLIBRARIES = job_submit_logging.la
 # Job submit logging plugin.
 job_submit_logging_la_SOURCES = job_submit_logging.c
 job_submit_logging_la_LDFLAGS = $(PLUGIN_FLAGS)
+job_submit_logging_la_LIBADD = $(LIBCURL) $(JSON_LDFLAGS)
 all: all-am
 
 .SUFFIXES:

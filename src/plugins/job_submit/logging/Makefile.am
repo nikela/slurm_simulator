@@ -11,3 +11,11 @@ pkglib_LTLIBRARIES = job_submit_logging.la
 # Job submit logging plugin.
 job_submit_logging_la_SOURCES = job_submit_logging.c
 job_submit_logging_la_LDFLAGS = $(PLUGIN_FLAGS)
+# add CURL and JSON-C
+job_submit_logging_la_LIBADD = $(LIBCURL) $(JSON_LDFLAGS)
+
+force:
+$(job_submit_logging_la_LIBADD) : force
+	@cd `dirname $@` && $(MAKE) `basename $@`
+
+endif

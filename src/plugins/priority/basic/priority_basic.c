@@ -105,13 +105,13 @@ int fini ( void )
 
 extern uint32_t priority_p_set(uint32_t last_prio, job_record_t *job_ptr)
 {
-	uint32_t new_prio = 1;
+	int new_prio = 10;
 
 	if (job_ptr->direct_set_prio && (job_ptr->priority > 1))
 		return job_ptr->priority;
 
-	if (last_prio >= 2)
-		new_prio = (last_prio - 1);
+	// Adjust priority based on the SCI of jobs
+	new_prio = (new_prio * (1 + job_ptr->change_rate));
 
 	if (job_ptr->details) {
 		int offset = job_ptr->details->nice;
@@ -124,7 +124,7 @@ extern uint32_t priority_p_set(uint32_t last_prio, job_record_t *job_ptr)
 	if (new_prio < 1)
 		new_prio = 1;
 
-	return new_prio;
+	return (uint32_t)new_prio;
 }
 
 static int _foreach_job_boost_prio(void *x, void *arg)

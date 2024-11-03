@@ -4686,6 +4686,12 @@ extern job_record_t *job_array_split(job_record_t *job_ptr)
 							   false);
 	}
 
+	// SCI
+	job_ptr_pend->change_rate = job_ptr->change_rate;
+	job_ptr_pend->carbon_records = job_ptr->carbon_records;
+	job_ptr_pend->record_count = job_ptr->record_count;
+	job_ptr_pend->actual_sci = job_ptr->actual_sci;
+
 	return job_ptr_pend;
 }
 
@@ -8691,6 +8697,11 @@ static int _copy_job_desc_to_job_record(job_desc_msg_t *job_desc,
 	}
 
 	job_ptr->selinux_context = xstrdup(job_desc->selinux_context);
+
+	// SCI
+	job_ptr->change_rate = job_desc->change_rate;
+	job_ptr->carbon_records = job_desc->carbon_records;
+	job_ptr->record_count = job_desc->record_count;
 
 	return SLURM_SUCCESS;
 }

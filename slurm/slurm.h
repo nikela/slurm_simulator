@@ -1537,6 +1537,13 @@ typedef struct power_mgmt_data {
 				 * of the day */
 } power_mgmt_data_t;
 
+typedef struct carbon_record {
+	char from[25];
+	char to[25];
+	int intensity;
+	double sci;
+} carbon_record_t;
+
 #define CORE_SPEC_THREAD 0x8000	/* If set, this is a thread count not core count */
 
 /*
@@ -1734,6 +1741,11 @@ typedef struct job_descriptor {	/* For submit, allocate, and update requests */
 	char *x11_magic_cookie;	/* automatically stolen from submit node */
 	char *x11_target;	/* target hostname, or unix socket if port == 0 */
 	uint16_t x11_target_port; /* target tcp port, 6000 + the display number */
+
+	// SCI
+	double change_rate;
+	carbon_record_t *carbon_records;
+	int record_count;
 } job_desc_msg_t;
 
 typedef struct job_info {

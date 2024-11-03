@@ -101,6 +101,7 @@
 #endif
 #define BUILD_TIMEOUT 2000000	/* Max build_job_queue() run time in usec */
 #define MAX_FAILED_RESV 10
+#define TIME_FORMAT "%Y-%m-%dT%H:%MZ"
 
 static batch_job_launch_msg_t *_build_launch_job_msg(job_record_t *job_ptr,
 						     uint16_t protocol_version);
@@ -117,6 +118,8 @@ static int	_valid_feature_list(job_record_t *job_ptr, List feature_list,
 				    bool can_reboot, char *debug_str,
 				    char *features, bool is_reservation);
 static int	_valid_node_feature(char *feature, bool can_reboot);
+static time_t convert_to_time_t(const char* datetime_str);
+
 static int	build_queue_timeout = BUILD_TIMEOUT;
 static int	correspond_after_task_cnt = CORRESPOND_ARRAY_TASK_CNT;
 
@@ -2643,6 +2646,22 @@ extern void launch_job(job_record_t *job_ptr)
 
 	/* Launch the RPC via agent */
 	agent_queue_request(agent_arg_ptr);
+
+	/* compute the actual sci  */
+	for (size_t i = 0; i < job_ptr->record_count; i++) {
+		carbon_record_t record = job_ptr->carbon_records[i];
+
+		time_t from_time = convert_to_time_t(record.from);
+		time_t to_time = convert_to_time_t(record.to);
+
+		if (difftime(from_time, last_job_update) < 0 &&
+			difftime(to_time, last_job_update) > 0) {
+			sched_info("%pJ from %s to %s, the carbon intensity is %d, the actual sci is %f",
+				job_ptr, record.from, record.to, record.intensity, record.sci);
+			job_ptr->actual_sci = record.sci;
+			break;
+		}
+	}
 }
 
 /*
@@ -5258,4 +5277,11 @@ void main_sched_fini(void)
 		return;
 	slurm_cond_broadcast(&sched_cond);
 	pthread_join(thread_id_sched, NULL);
+}
+
+time_t convert_to_time_t(const char* datetime_str) {
+	struct tm tm;
+	memset(&tm, 0, sizeof(struct tm));
+	strptime(datetime_str, TIME_FORMAT, &tm);
+	return timegm(&tm);
 }
