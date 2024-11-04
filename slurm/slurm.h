@@ -1719,6 +1719,15 @@ typedef struct job_descriptor {	/* For submit, allocate, and update requests */
 				  * default=0 (no limit) */
 	uint32_t pn_min_tmp_disk;/* minimum tmp disk per node,
 				  * default=0 */
+	double power_est; /* estimated power of CPUs, GPUs, mem 
+					* if job_submit_carbon_logging enabled */
+	double energy_est; /* estimated energy based on requested time 
+					* if job_submit_carbon_logging enabled */
+	double sci_est; /* estimated SCI at submission time 
+					* if job_submit_carbon_logging enabled */
+	double sci_fcst; /* forecasted SCI in 1h from submission time
+					  * if job_submit carbon_logging enabled */
+	double change_rate; /* job priority change rate */
 	char *req_context;	/* requested selinux context */
 	uint32_t req_switch;    /* Minimum number of switches */
 	char *selinux_context;	/* used internally in the slurmctld,
@@ -2374,6 +2383,15 @@ typedef struct job_defaults {
 	uint16_t type;	/* See JOB_DEF_* above */
 	uint64_t value;	/* Value */
 } job_defaults_t;
+
+
+/* Record to store carbon intensity information */
+typedef struct carbon_record {
+	char from[25];
+	char to[25];
+	int intensity;
+	double sci;
+} carbon_record_t;
 
 /* Current partition state information and used to set partition options
  * using slurm_update_partition(). */
