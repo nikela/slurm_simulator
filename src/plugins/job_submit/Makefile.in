@@ -473,6 +473,7 @@ SUBDIRS = \
 	cray_aries \
 	defaults \
 	logging \
+	carbon_logging \
 	lua \
 	partition \
 	pbs \
