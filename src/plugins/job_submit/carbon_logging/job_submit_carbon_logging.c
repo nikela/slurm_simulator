@@ -62,33 +62,36 @@
 #include "src/slurmctld/locks.h"
 #include "src/slurmctld/slurmctld.h"
 
-#define KHW 2.77778e-7
-#ifndef LCA
-#define LCA 5*365*24*60 //5 years in mins
+#define KWH 2.77778e-7
+
+#ifndef LCA_FACTOR
+#define LCA_FACTOR 6.342*1e-9 //1 / lca in seconds
 #endif
 
+
 #ifndef POWER_CPU
-#define POWER_CPU 165 //W
+#define POWER_CPU 165. //W
 #endif
 
 #ifndef POWER_GPU
-#define POWER_GPU 300 //W
+#define POWER_GPU 300. //W
 #endif
 
+#define MEM_UNIT 8000 //8GB ->8000MB
 #ifndef POWER_MEM
-#define POWER_MEM 1 // W per 8GB
+#define POWER_MEM 1. // W per 8GB
 #endif
 
 #ifndef EM_CPU
-#define EM_CPU 10 //Intel Xeon Gold 6240R (14nm, 24 cores) kgCO2
+#define EM_CPU 10. //Intel Xeon Gold 6240R (14nm, 24 cores) kgCO2
 #endif
 
 #ifndef EM_GPU
-#define EM_GPU 20 // NVIDIA V100 kgCO2
+#define EM_GPU 20. // NVIDIA V100 kgCO2
 #endif
 
 #ifndef EM_MEM
-#define EM_MEM 1 // 8GB module
+#define EM_MEM 1. // 8GB module
 #endif
 
 /* Required to get the carbon intensity */
@@ -98,7 +101,8 @@
 #ifndef REGION_ID
 #define REGION_ID 16 // Scotland
 #endif
-#define MAX_SCI_VALUE 10000 //
+#define MAX_SCI_VALUE 100 //
+
 
 /*
  * These variables are required by the generic plugin interface.  If they
@@ -217,14 +221,15 @@ uint32_t _get_intensity(char *url) {
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, _write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
         res = curl_easy_perform(curl);
+		fprintf(stderr, "%s\n", url);
 
         if (res != CURLE_OK) {
             fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
         }
 	}
-	 json_object *root_obj = json_tokener_parse(response);
+	json_object *root_obj = json_tokener_parse(response);
     if (!root_obj) {
-        fprintf(stderr, "Error parsing JSON\n");
+        fprintf(stderr, "Error parsing JSON: %s\n", response);
         json_object_put(root_obj);
         curl_easy_cleanup(curl);
         free(response);
@@ -264,8 +269,11 @@ uint32_t _get_intensity(char *url) {
 //		return -1;
 
     }
-
-    json_object *first_data_item = json_object_array_get_idx(region_data_array, 0);
+	//Forecast:last item else first item
+	int array_length = json_object_array_length(region_data_array);
+	json_object *first_data_item = json_object_array_get_idx(region_data_array, array_length -1);
+	
+    //json_object *first_data_item = json_object_array_get_idx(region_data_array, 0);
     if (!first_data_item || !json_object_is_type(first_data_item, json_type_object)) {
         fprintf(stderr, "Error: First data item is not an object\n");
         json_object_put(root_obj);
@@ -294,9 +302,9 @@ uint32_t _get_intensity(char *url) {
 		return -1;
     }
 
-    uint32_t forecast = json_object_get_int(forecast_value);
-
-	cleanup:
+    uint32_t forecast = (uint32_t)json_object_get_int(forecast_value);
+	const char * str_forecast = json_object_get_string(forecast_value);
+	fprintf(stderr, "Forecast: as str %s as int %u\n", str_forecast, forecast);
 
         json_object_put(root_obj);
         curl_easy_cleanup(curl);
@@ -305,75 +313,89 @@ uint32_t _get_intensity(char *url) {
 }
 
 
-extern uint32_t _get_intensity_now() {
+uint32_t _get_intensity_now() {
 	// https://carbon-intensity.github.io/api-definitions/#get-regional-regionid-regionid
 	char from[25];
 	char url[256];
-	size_t record_count;
 
 	get_iso8601_time(from, sizeof(from));
 	snprintf(url, sizeof(url),
 	 		"https://api.carbonintensity.org.uk/regional/regionid/%d",
 	 		 REGION_ID);
-	return get_intensity(url);
+	return _get_intensity(url);
 }
 
-extern uint32_t _get_intensity_forecast() {
-	// doc: https://carbon-intensity.github.io/api-definitions/#get-regional-intensity-from-fw24h
+uint32_t _get_intensity_forecast() {
+// doc: https://carbon-intensity.github.io/api-definitions/#get-regional-intensity-from-fw24h
 	char from[25];
 	char url[256];
-	size_t record_count;
 
 	get_iso8601_time(from, sizeof(from));
 	snprintf(url, sizeof(url),
 	 		"https://api.carbonintensity.org.uk/regional/intensity/%s/fw24h/regionid/%d",
 	 		from, REGION_ID);
-	return get_intensity (url);
+	return _get_intensity (url);
 }
 
 
-extern void _compute_carbon(job_desc_msg_t *job_desc, part_record_t * part_ptr, uint32_t carbon_intensity) 
+void _compute_carbon(job_desc_msg_t *job_desc, part_record_t * part_ptr) 
 {
 	
-
-
 	uint32_t current_intensity = _get_intensity_now();
 	uint32_t future_intensity = _get_intensity_forecast();
-	
+	fprintf(stderr, "current_intensity %u future_intensity %u\n", current_intensity, future_intensity);
 
 	// SCI = (operational carbon + embodied carbon) / walltime
-	uint32_t walltime =job_desc->time_limit; // mins
+	uint32_t walltime =job_desc->time_limit * 60; // in secs
 
 	// Energy = Number of Nodes * Power of the node * Walltime
 	uint32_t num_nodes = job_desc->num_tasks / job_desc->ntasks_per_node;
 
-	uint16_t cpus_per_task = job_desc->cpus_per_task == (uint16_t)-1? 1: job_desc->cpus_per_task;
+	uint16_t cpus_per_task = (job_desc->cpus_per_task == UINT16_MAX - 1 ) ? 1: job_desc->cpus_per_task;
 	uint32_t total_cpus = part_ptr->max_core_cnt; // could also be max_cpu_cnt;
-	uint32_t total_memory = part_ptr->max_mem_per_cpu;
+	//uint32_t total_memory = part_ptr->max_mem_per_cpu;
 	// Power of the node = Power of the CPU + Power of the GPUs + Power of DRAM + Power of any SSDs/HDDs
-	uint32_t power_cpus = ((cpus_per_task * job_desc->ntasks_per_node) / total_cpus) * POWER_CPU; // W
-	uint32_t power_mem = ((job_desc->pn_min_memory) ? job_desc->pn_min_memory : part_ptr->max_mem_per_cpu)*POWER_MEM/8.;
-	uint32_t power_gpus = 0;
+	
+	float power_cpus = ((cpus_per_task * job_desc->ntasks_per_node) / (float)total_cpus) * POWER_CPU; // W
+
+	double mem_per_node; // in units of 8GB
+	//Work with memory in MB to avoid overflows
+	if (job_desc->pn_min_memory == UINT64_MAX -1) {
+		if (part_ptr->max_mem_per_cpu != 0) {
+			mem_per_node = part_ptr->max_mem_per_cpu * 1e-6 /  MEM_UNIT; //mem in MB, divide by unit
+		}
+		else
+			mem_per_node=2*((cpus_per_task * job_desc->ntasks_per_node)/ (double)total_cpus);	//assign 16G of memory per node, and share
+	}
+	else {
+		mem_per_node = (double)job_desc->pn_min_memory * 1e-6 / MEM_UNIT;//mem in MB, divide by unit
+	}
+
+	//uint64_t mem_per_node = (job_desc->pn_min_memory == UINT64_MAX - 1) ? (part_ptr->max_mem_per_cpu != 0 ? part_ptr->max_mem_per_cpu : (uint64_t)(MEM_UNIT)) : job_desc->pn_min_memory;
+	double power_mem = (double)mem_per_node*(double)POWER_MEM;
+	float power_gpus = 0;
 	int gpus_per_node = 0;
 	if (job_desc->tres_per_node != NULL) {
 		gpus_per_node = regex_gpus(job_desc->tres_per_node);
 		power_gpus = POWER_GPU * gpus_per_node;
 	}
 
-	uint32_t power_nodes = power_cpus + power_gpus + power_mem;
-
-	uint32_t energy = num_nodes * power_nodes * walltime * 60; // J = W * sec
+	double power_nodes = power_cpus + power_gpus + power_mem;
+	fprintf(stderr,"min_mem %lu max_mem %lu mem_per_node %.3lf power_mem %.3f power_gpus %.3f\n", job_desc->pn_min_memory, part_ptr->max_mem_per_cpu, mem_per_node,power_mem, power_gpus);
+	double energy = num_nodes * power_nodes * walltime; // J = W * sec
 
 	// Opertional Emissions = Energy * Region-specific carbon intensity
-	double op_emissions = ((double)energy * KWH) * current_intensity; // kWH * gCO2/kWh -> gCO2
-	double op_emissions_forecast = ((double)energy * KWH) *future_intensity;
+	double op_emissions = (energy * KWH) * current_intensity; // kWH * gCO2/kWh -> gCO2
+	double op_emissions_forecast = (energy * KWH) *future_intensity;
+	fprintf(stderr, "Operational %.3lf %.3lf\n", op_emissions, op_emissions_forecast);
 
 	// Embodied Emissions = Total embodied emissions * Time share * Resource share
-	double time_share = (double)walltime / LCA; // mins/mins
-	double em_cpu = ((cpus_per_task * job_desc->ntasks_per_node) / total_cpus)*EM_CPU ;
-	double em_gpu = job_desc->tres_per_node != NULL ? job_desc->tres_per_node * EM_GPU : 0;
-	double em_mem = ((job_desc->pn_min_memory) ? job_desc->pn_min_memory : part_ptr->max_mem_per_cpu)*EM_MEM/8.;
+	double time_share = (double)(walltime/60.) * LCA_FACTOR; // mins/mins
+	double em_cpu =  (((cpus_per_task * job_desc->ntasks_per_node) / (float)total_cpus))*EM_CPU ;
+	double em_gpu = job_desc->tres_per_node != NULL ? gpus_per_node * EM_GPU : 0;
+	double em_mem = mem_per_node * EM_MEM;
 	double em_emissions = (em_cpu + em_gpu + em_mem) * num_nodes * time_share; // gCO2
+	fprintf(stderr, "em_cpu %.4lf em_gpu %.4lf em_mem %.4lf time_share %.4e emissions %.4lf\n",em_cpu, em_gpu, em_mem, time_share, em_emissions);
 
 	job_desc->power_est = num_nodes * power_nodes;
 	job_desc->energy_est = energy;
@@ -382,10 +404,11 @@ extern void _compute_carbon(job_desc_msg_t *job_desc, part_record_t * part_ptr, 
 	double change_rate = (future_intensity - current_intensity) / current_intensity;
 
 	if (change_rate > 0) {
-		job_desc->change_rate = change_rate + current_sci / MAX_SCI_VALUE;
+		job_desc->change_rate = change_rate + job_desc->sci_est / MAX_SCI_VALUE;
 	} else {
-		job_desc->change_rate = change_rate - current_sci / MAX_SCI_VALUE;
+		job_desc->change_rate = change_rate - job_desc->sci_est / MAX_SCI_VALUE;
 	}
+	job_desc->change_rate = (job_desc->sci_fcst - job_desc->sci_est) / job_desc->sci_est;
 
 
 
@@ -457,18 +480,6 @@ static bool _valid_memory(part_record_t *part_ptr, job_desc_msg_t *job_desc)
 	return true;
 }
 
-/* Get maximum resources supported on partition nodes - 
-	required to estimate power share */
-static uint32_t _max_cpus(part_record_t * part_ptr) {
-	return part_ptr->max_core_cnt;
-	//This could also require max_cpu_cnt instead
-}
-
-static uint32_t _max_mem(part_record_t * part_ptr) {
-	return part_ptr->max_mem_per_cpu;
-	//This is referring to the per node memory (I think)
-}
-
 
 /* This example code will set a job's default partition to the partition with
  * highest priority_tier is available to this user. This is only an example
@@ -479,9 +490,10 @@ extern int job_submit(job_desc_msg_t *job_desc, uint32_t submit_uid,
 	ListIterator part_iterator;
 	part_record_t *part_ptr;
 	part_record_t *top_prio_part = NULL;
+	part_record_t *this;
+	part_iterator = list_iterator_create(part_list);
 
  	if (!job_desc->partition) { /* job doesn't specify partition */
-		part_iterator = list_iterator_create(part_list);
 		while ((part_ptr = list_next(part_iterator))) {
 			if (!(part_ptr->state_up & PARTITION_SUBMIT))
 				continue;	/* nobody can submit jobs here */
@@ -498,21 +510,34 @@ extern int job_submit(job_desc_msg_t *job_desc, uint32_t submit_uid,
 				top_prio_part = part_ptr;
 			}
 		}
-		list_iterator_destroy(part_iterator);
 
 		if (top_prio_part) {
+			this = part_ptr;
 			info("Setting partition of submitted job to %s",
 			     top_prio_part->name);
 			job_desc->partition = xstrdup(top_prio_part->name);
 		}
 	}
+	else {
+		while ((part_ptr = list_next(part_iterator))) {	
+			if (strcmp(part_ptr->name, job_desc->partition) == 0) {
+				this = part_ptr;
+				break;
+			}
+		}
+
+	}
+	list_iterator_destroy(part_iterator);
+
 
 	/* Log select fields from a job submit request. See slurm/slurm.h
 	 * for information about additional fields in job_desc_msg_t.
 	 * Note that default values for most numbers is NO_VAL */
+	_compute_carbon(job_desc, this); 
+
 	info("Job submit request: account:%s begin_time:%ld dependency:%s "
 	     "name:%s partition:%s qos:%s submit_uid:%u time_limit:%u "
-	     "user_id:%u power_est:%.3f energy_est:%.3f sci_est:%.3f"
+	     "user_id:%u power_est:%.3f energy_est:%.3f sci_est:%.3f "
 		 "sci_fcst:%.3f change_rate:%.3f",
 	     job_desc->account, (long)job_desc->begin_time,
 	     job_desc->dependency,
